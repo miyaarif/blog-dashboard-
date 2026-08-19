@@ -1,15 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { use } from "react";
 import { getArticles, getSites } from "@/lib/sites";
 import { getArticleWithEdits, saveArticle } from "@/lib/storage";
+import { scoreArticle } from "@/lib/scoring/score";
+import { checkPublishGate } from "@/lib/scoring/publishGate";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import CharCounter from "@/components/CharCounter";
 import type { Article } from "@/types";
-import { use } from "react";
-import { scoreArticle } from "@/lib/scoring/score";
-import { getSiteById } from "@/lib/sites";
 
 export default function EditorPage({
   params,
@@ -32,8 +32,13 @@ export default function EditorPage({
   if (!original || !article) {
     return <div style={{ padding: 24 }}>Article not found.</div>;
   }
+
   const currentSite = sites.find((s) => s.id === article.site_id)!;
   const { score, reasons } = scoreArticle(article, currentSite);
+
+  const allArticles = getArticles();
+  const gate = checkPublishGate(article, currentSite, allArticles);
+
   function update(field: keyof Article, value: string) {
     setArticle((prev) => (prev ? { ...prev, [field]: value } : prev));
   }
@@ -87,6 +92,7 @@ export default function EditorPage({
           rows={20}
           style={{ display: "block", width: "100%", fontFamily: "monospace" }}
         />
+
         <div
           style={{
             marginTop: 16,
@@ -105,6 +111,31 @@ export default function EditorPage({
               ))}
             </ul>
           )}
+        </div>
+
+        <div
+          style={{
+            marginTop: 16,
+            padding: 12,
+            border: "1px solid #333",
+            borderRadius: 6,
+          }}
+        >
+          <strong>
+            {gate.canPublish ? "Ready to publish" : "Blocked from publishing"}
+          </strong>
+          {!gate.canPublish && (
+            <ul style={{ marginTop: 8 }}>
+              {gate.reasons.map((r, i) => (
+                <li key={i} style={{ fontSize: 13, color: "#dc2626" }}>
+                  {r}
+                </li>
+              ))}
+            </ul>
+          )}
+          <button disabled={!gate.canPublish} style={{ marginTop: 8 }}>
+            Publish
+          </button>
         </div>
 
         <button onClick={handleSave} style={{ marginTop: 12 }}>
