@@ -8,6 +8,8 @@ import remarkGfm from "remark-gfm";
 import CharCounter from "@/components/CharCounter";
 import type { Article } from "@/types";
 import { use } from "react";
+import { scoreArticle } from "@/lib/scoring/score";
+import { getSiteById } from "@/lib/sites";
 
 export default function EditorPage({
   params,
@@ -30,7 +32,8 @@ export default function EditorPage({
   if (!original || !article) {
     return <div style={{ padding: 24 }}>Article not found.</div>;
   }
-
+  const currentSite = sites.find((s) => s.id === article.site_id)!;
+  const { score, reasons } = scoreArticle(article, currentSite);
   function update(field: keyof Article, value: string) {
     setArticle((prev) => (prev ? { ...prev, [field]: value } : prev));
   }
@@ -84,6 +87,25 @@ export default function EditorPage({
           rows={20}
           style={{ display: "block", width: "100%", fontFamily: "monospace" }}
         />
+        <div
+          style={{
+            marginTop: 16,
+            padding: 12,
+            border: "1px solid #333",
+            borderRadius: 6,
+          }}
+        >
+          <strong>Score: {score} / 100</strong>
+          {reasons.length > 0 && (
+            <ul style={{ marginTop: 8 }}>
+              {reasons.map((r, i) => (
+                <li key={i} style={{ fontSize: 13, color: "#dc2626" }}>
+                  {r}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <button onClick={handleSave} style={{ marginTop: 12 }}>
           Save
