@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { getSites, getArticles } from "@/lib/sites";
 import SiteBadge from "@/components/SiteBadge";
 import StatusPill from "@/components/StatusPill";
@@ -71,7 +72,11 @@ export default function ArticlesPage() {
             const site = sites.find((s) => s.id === a.site_id);
             return (
               <tr key={a.id} style={{ borderTop: "1px solid #e5e7eb" }}>
-                <td style={{ padding: 8 }}>{a.title}</td>
+                <td style={{ padding: 8 }}>
+                  <Link href={`/articles/${a.id}`}>{a.title}</Link>
+                  {" — "}
+                  <Link href={`/editor/${a.id}`}>edit</Link>
+                </td>
                 <td style={{ padding: 8 }}>
                   {site && <SiteBadge site={site} />}
                 </td>
