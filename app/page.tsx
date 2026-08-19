@@ -1,12 +1,11 @@
-import { getSites, getArticles } from "@/lib/sites";
-import { scoreArticle } from "@/lib/scoring/score";
+import { getArticles } from "@/lib/sites";
+import { findDuplicateGroups } from "@/lib/scoring/duplicates";
 
 export default function Home() {
-  const sites = getSites();
-  const article = getArticles()[0];
-  const site = sites.find((s) => s.id === article.site_id)!;
+  const articles = getArticles();
+  const groups = findDuplicateGroups(articles);
 
-  const result = scoreArticle(article, site);
-
-  return <pre>{JSON.stringify(result, null, 2)}</pre>;
+  return (
+    <pre>{JSON.stringify({ groupCount: groups.length, groups }, null, 2)}</pre>
+  );
 }
