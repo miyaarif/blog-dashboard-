@@ -44,6 +44,7 @@ export default function EditorPage({
   }
 
   function handleSave() {
+    if (!article) return;
     saveArticle(article);
     setSavedMessage("Saved");
     setTimeout(() => setSavedMessage(""), 2000);
