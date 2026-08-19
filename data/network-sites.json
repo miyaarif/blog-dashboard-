@@ -1,0 +1,44 @@
+[
+  {
+    "id": "site_hme",
+    "domain": "hmetech.com",
+    "name": "HME Technologies",
+    "vertical": "Creator Marketing (B2B)",
+    "description": "Creator-marketing infrastructure — brand sponsorships, YouTube SEO and full video production.",
+    "audience": "Consumer brands and marketing teams",
+    "content_profile": "standard",
+    "publishing_cadence_per_week": 3,
+    "status": "active",
+    "primary_colour": "#7c3aed",
+    "monetisation": "services",
+    "logo_url": "https://api.dicebear.com/7.x/initials/svg?seed=HMETechnologies"
+  },
+  {
+    "id": "site_scholar",
+    "domain": "scholarroads.com",
+    "name": "ScholarRoads",
+    "vertical": "Student Lending",
+    "description": "Comparison and guidance for private student loans. Federal aid first, then compare lenders.",
+    "audience": "Students, parents, international students, refinancers",
+    "content_profile": "ymyl_finance",
+    "publishing_cadence_per_week": 7,
+    "status": "active",
+    "primary_colour": "#2563eb",
+    "monetisation": "affiliate",
+    "logo_url": "https://api.dicebear.com/7.x/initials/svg?seed=ScholarRoads"
+  },
+  {
+    "id": "site_fuel",
+    "domain": "fuelbusinesscapital.com",
+    "name": "Fuel Business Capital",
+    "vertical": "Small Business Financing",
+    "description": "Revenue-based capital for small businesses. Funding in as little as 24 hours.",
+    "audience": "SMB owners, $20k+/mo revenue, 6+ months trading",
+    "content_profile": "ymyl_finance",
+    "publishing_cadence_per_week": 7,
+    "status": "active",
+    "primary_colour": "#059669",
+    "monetisation": "lead_gen",
+    "logo_url": "https://api.dicebear.com/7.x/initials/svg?seed=FuelBusinessCapital"
+  }
+]

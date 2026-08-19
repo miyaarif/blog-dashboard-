@@ -1,0 +1,551 @@
+[
+  {
+    "keyword": "youtube sponsorship rates",
+    "site_id": "site_hme",
+    "monthly_volume": 590,
+    "difficulty": 29,
+    "intent": "informational",
+    "assigned_article_id": "art_0001",
+    "current_position": null
+  },
+  {
+    "keyword": "creator media kit",
+    "site_id": "site_hme",
+    "monthly_volume": 320,
+    "difficulty": 66,
+    "intent": "informational",
+    "assigned_article_id": "art_0002",
+    "current_position": null
+  },
+  {
+    "keyword": "sponsor read placement",
+    "site_id": "site_hme",
+    "monthly_volume": 140,
+    "difficulty": 69,
+    "intent": "commercial",
+    "assigned_article_id": "art_0003",
+    "current_position": 69.2
+  },
+  {
+    "keyword": "cpm vs rpm",
+    "site_id": "site_hme",
+    "monthly_volume": 1600,
+    "difficulty": 75,
+    "intent": "commercial",
+    "assigned_article_id": "art_0004",
+    "current_position": 39.8
+  },
+  {
+    "keyword": "brand deal outreach",
+    "site_id": "site_hme",
+    "monthly_volume": 320,
+    "difficulty": 78,
+    "intent": "commercial",
+    "assigned_article_id": "art_0005",
+    "current_position": null
+  },
+  {
+    "keyword": "influencer roi measurement",
+    "site_id": "site_hme",
+    "monthly_volume": 140,
+    "difficulty": 41,
+    "intent": "commercial",
+    "assigned_article_id": "art_0006",
+    "current_position": 81.3
+  },
+  {
+    "keyword": "micro influencer marketing",
+    "site_id": "site_hme",
+    "monthly_volume": 70,
+    "difficulty": 55,
+    "intent": "informational",
+    "assigned_article_id": "art_0007",
+    "current_position": 63.8
+  },
+  {
+    "keyword": "utm tracking creators",
+    "site_id": "site_hme",
+    "monthly_volume": 1600,
+    "difficulty": 44,
+    "intent": "commercial",
+    "assigned_article_id": "art_0008",
+    "current_position": 50.5
+  },
+  {
+    "keyword": "video script structure",
+    "site_id": "site_hme",
+    "monthly_volume": 70,
+    "difficulty": 58,
+    "intent": "commercial",
+    "assigned_article_id": "art_0010",
+    "current_position": null
+  },
+  {
+    "keyword": "ftc disclosure creators",
+    "site_id": "site_hme",
+    "monthly_volume": 590,
+    "difficulty": 46,
+    "intent": "commercial",
+    "assigned_article_id": "art_0011",
+    "current_position": 75.4
+  },
+  {
+    "keyword": "affiliate vs sponsorship",
+    "site_id": "site_hme",
+    "monthly_volume": 9900,
+    "difficulty": 22,
+    "intent": "informational",
+    "assigned_article_id": "art_0013",
+    "current_position": 17.5
+  },
+  {
+    "keyword": "youtube channel audit",
+    "site_id": "site_hme",
+    "monthly_volume": 1600,
+    "difficulty": 78,
+    "intent": "commercial",
+    "assigned_article_id": "art_0014",
+    "current_position": null
+  },
+  {
+    "keyword": "youtube seo keywords",
+    "site_id": "site_hme",
+    "monthly_volume": 880,
+    "difficulty": 74,
+    "intent": "informational",
+    "assigned_article_id": "art_0015",
+    "current_position": 58.4
+  },
+  {
+    "keyword": "creator vetting brands",
+    "site_id": "site_hme",
+    "monthly_volume": 320,
+    "difficulty": 38,
+    "intent": "commercial",
+    "assigned_article_id": "art_0016",
+    "current_position": 25.5
+  },
+  {
+    "keyword": "sponsorship reporting",
+    "site_id": "site_hme",
+    "monthly_volume": 320,
+    "difficulty": 52,
+    "intent": "commercial",
+    "assigned_article_id": "art_0018",
+    "current_position": null
+  },
+  {
+    "keyword": "channel content calendar",
+    "site_id": "site_hme",
+    "monthly_volume": 2900,
+    "difficulty": 54,
+    "intent": "commercial",
+    "assigned_article_id": "art_0020",
+    "current_position": null
+  },
+  {
+    "keyword": "federal vs private student loans",
+    "site_id": "site_scholar",
+    "monthly_volume": 9900,
+    "difficulty": 25,
+    "intent": "commercial",
+    "assigned_article_id": "art_0021",
+    "current_position": null
+  },
+  {
+    "keyword": "student loan cosigner",
+    "site_id": "site_scholar",
+    "monthly_volume": 320,
+    "difficulty": 5,
+    "intent": "commercial",
+    "assigned_article_id": "art_0022",
+    "current_position": 13.5
+  },
+  {
+    "keyword": "fixed vs variable student loan",
+    "site_id": "site_scholar",
+    "monthly_volume": 320,
+    "difficulty": 43,
+    "intent": "informational",
+    "assigned_article_id": "art_0023",
+    "current_position": null
+  },
+  {
+    "keyword": "international student loans",
+    "site_id": "site_scholar",
+    "monthly_volume": 320,
+    "difficulty": 55,
+    "intent": "informational",
+    "assigned_article_id": "art_0026",
+    "current_position": 30.0
+  },
+  {
+    "keyword": "student loan forbearance",
+    "site_id": "site_scholar",
+    "monthly_volume": 70,
+    "difficulty": 80,
+    "intent": "informational",
+    "assigned_article_id": "art_0029",
+    "current_position": null
+  },
+  {
+    "keyword": "college ave vs sallie mae",
+    "site_id": "site_scholar",
+    "monthly_volume": 1600,
+    "difficulty": 9,
+    "intent": "commercial",
+    "assigned_article_id": "art_0030",
+    "current_position": null
+  },
+  {
+    "keyword": "private loan application",
+    "site_id": "site_scholar",
+    "monthly_volume": 140,
+    "difficulty": 73,
+    "intent": "commercial",
+    "assigned_article_id": "art_0031",
+    "current_position": 61.9
+  },
+  {
+    "keyword": "student loan interest capitalisation",
+    "site_id": "site_scholar",
+    "monthly_volume": 9900,
+    "difficulty": 61,
+    "intent": "informational",
+    "assigned_article_id": "art_0032",
+    "current_position": null
+  },
+  {
+    "keyword": "revenue based financing",
+    "site_id": "site_fuel",
+    "monthly_volume": 70,
+    "difficulty": 17,
+    "intent": "commercial",
+    "assigned_article_id": "art_0036",
+    "current_position": null
+  },
+  {
+    "keyword": "factor rate explained",
+    "site_id": "site_fuel",
+    "monthly_volume": 320,
+    "difficulty": 47,
+    "intent": "commercial",
+    "assigned_article_id": "art_0038",
+    "current_position": 45.7
+  },
+  {
+    "keyword": "qualify business funding",
+    "site_id": "site_fuel",
+    "monthly_volume": 2900,
+    "difficulty": 79,
+    "intent": "commercial",
+    "assigned_article_id": "art_0039",
+    "current_position": 76.9
+  },
+  {
+    "keyword": "business cash flow gap",
+    "site_id": "site_fuel",
+    "monthly_volume": 2900,
+    "difficulty": 28,
+    "intent": "commercial",
+    "assigned_article_id": "art_0040",
+    "current_position": null
+  },
+  {
+    "keyword": "bad credit business funding",
+    "site_id": "site_fuel",
+    "monthly_volume": 5400,
+    "difficulty": 71,
+    "intent": "informational",
+    "assigned_article_id": "art_0041",
+    "current_position": null
+  },
+  {
+    "keyword": "fast business funding",
+    "site_id": "site_fuel",
+    "monthly_volume": 320,
+    "difficulty": 63,
+    "intent": "commercial",
+    "assigned_article_id": "art_0042",
+    "current_position": null
+  },
+  {
+    "keyword": "consolidating advances",
+    "site_id": "site_fuel",
+    "monthly_volume": 70,
+    "difficulty": 69,
+    "intent": "commercial",
+    "assigned_article_id": "art_0043",
+    "current_position": 17.2
+  },
+  {
+    "keyword": "business funding documents",
+    "site_id": "site_fuel",
+    "monthly_volume": 2900,
+    "difficulty": 17,
+    "intent": "commercial",
+    "assigned_article_id": "art_0045",
+    "current_position": null
+  },
+  {
+    "keyword": "seasonal business funding",
+    "site_id": "site_fuel",
+    "monthly_volume": 2900,
+    "difficulty": 11,
+    "intent": "commercial",
+    "assigned_article_id": "art_0048",
+    "current_position": null
+  },
+  {
+    "keyword": "second position funding",
+    "site_id": "site_fuel",
+    "monthly_volume": 70,
+    "difficulty": 25,
+    "intent": "commercial",
+    "assigned_article_id": "art_0049",
+    "current_position": null
+  },
+  {
+    "keyword": "best private student loans for law students",
+    "site_id": "site_scholar",
+    "monthly_volume": 2900,
+    "difficulty": 80,
+    "intent": "informational",
+    "assigned_article_id": "art_0051",
+    "current_position": 54.7
+  },
+  {
+    "keyword": "best private student loans for medical students",
+    "site_id": "site_scholar",
+    "monthly_volume": 590,
+    "difficulty": 37,
+    "intent": "informational",
+    "assigned_article_id": "art_0052",
+    "current_position": 59.2
+  },
+  {
+    "keyword": "best private student loans for mba students",
+    "site_id": "site_scholar",
+    "monthly_volume": 2900,
+    "difficulty": 44,
+    "intent": "commercial",
+    "assigned_article_id": "art_0054",
+    "current_position": 27.7
+  },
+  {
+    "keyword": "best private student loans for community college students",
+    "site_id": "site_scholar",
+    "monthly_volume": 70,
+    "difficulty": 12,
+    "intent": "commercial",
+    "assigned_article_id": "art_0055",
+    "current_position": 73.4
+  },
+  {
+    "keyword": "best private student loans for online program students",
+    "site_id": "site_scholar",
+    "monthly_volume": 1600,
+    "difficulty": 19,
+    "intent": "commercial",
+    "assigned_article_id": "art_0057",
+    "current_position": 21.2
+  },
+  {
+    "keyword": "best private student loans for trade school students",
+    "site_id": "site_scholar",
+    "monthly_volume": 70,
+    "difficulty": 59,
+    "intent": "commercial",
+    "assigned_article_id": "art_0059",
+    "current_position": 54.7
+  },
+  {
+    "keyword": "business funding for construction",
+    "site_id": "site_fuel",
+    "monthly_volume": 5400,
+    "difficulty": 13,
+    "intent": "informational",
+    "assigned_article_id": "art_0061",
+    "current_position": 30.3
+  },
+  {
+    "keyword": "business funding for trucking",
+    "site_id": "site_fuel",
+    "monthly_volume": 5400,
+    "difficulty": 13,
+    "intent": "commercial",
+    "assigned_article_id": "art_0062",
+    "current_position": 12.3
+  },
+  {
+    "keyword": "business funding for salons",
+    "site_id": "site_fuel",
+    "monthly_volume": 140,
+    "difficulty": 25,
+    "intent": "commercial",
+    "assigned_article_id": "art_0063",
+    "current_position": 41.2
+  },
+  {
+    "keyword": "business funding for auto repair",
+    "site_id": "site_fuel",
+    "monthly_volume": 880,
+    "difficulty": 32,
+    "intent": "informational",
+    "assigned_article_id": "art_0064",
+    "current_position": 26.9
+  },
+  {
+    "keyword": "business funding for e-commerce",
+    "site_id": "site_fuel",
+    "monthly_volume": 2900,
+    "difficulty": 47,
+    "intent": "commercial",
+    "assigned_article_id": "art_0066",
+    "current_position": 30.6
+  },
+  {
+    "keyword": "business funding for hospitality",
+    "site_id": "site_fuel",
+    "monthly_volume": 70,
+    "difficulty": 80,
+    "intent": "informational",
+    "assigned_article_id": "art_0067",
+    "current_position": 24.1
+  },
+  {
+    "keyword": "business funding for landscaping",
+    "site_id": "site_fuel",
+    "monthly_volume": 2900,
+    "difficulty": 73,
+    "intent": "commercial",
+    "assigned_article_id": "art_0068",
+    "current_position": 76.0
+  },
+  {
+    "keyword": "creator marketing agency",
+    "site_id": "site_hme",
+    "monthly_volume": 210,
+    "difficulty": 54,
+    "intent": "informational",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "youtube ad alternative",
+    "site_id": "site_hme",
+    "monthly_volume": 210,
+    "difficulty": 29,
+    "intent": "informational",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "sponsored video production",
+    "site_id": "site_hme",
+    "monthly_volume": 480,
+    "difficulty": 27,
+    "intent": "commercial",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "creator campaign pricing",
+    "site_id": "site_hme",
+    "monthly_volume": 210,
+    "difficulty": 25,
+    "intent": "informational",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "student loan calculator",
+    "site_id": "site_scholar",
+    "monthly_volume": 1000,
+    "difficulty": 25,
+    "intent": "informational",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "private loan without cosigner",
+    "site_id": "site_scholar",
+    "monthly_volume": 1000,
+    "difficulty": 20,
+    "intent": "informational",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "best student loan rates 2026",
+    "site_id": "site_scholar",
+    "monthly_volume": 1000,
+    "difficulty": 22,
+    "intent": "commercial",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "refinance student loans bad credit",
+    "site_id": "site_scholar",
+    "monthly_volume": 210,
+    "difficulty": 32,
+    "intent": "commercial",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "student loan grace period",
+    "site_id": "site_scholar",
+    "monthly_volume": 210,
+    "difficulty": 7,
+    "intent": "informational",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "small business loan 24 hours",
+    "site_id": "site_fuel",
+    "monthly_volume": 480,
+    "difficulty": 56,
+    "intent": "informational",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "working capital advance",
+    "site_id": "site_fuel",
+    "monthly_volume": 480,
+    "difficulty": 52,
+    "intent": "informational",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "business funding no collateral",
+    "site_id": "site_fuel",
+    "monthly_volume": 210,
+    "difficulty": 21,
+    "intent": "informational",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "revenue advance vs loan",
+    "site_id": "site_fuel",
+    "monthly_volume": 480,
+    "difficulty": 32,
+    "intent": "commercial",
+    "assigned_article_id": null,
+    "current_position": null
+  },
+  {
+    "keyword": "funding for new businesses",
+    "site_id": "site_fuel",
+    "monthly_volume": 480,
+    "difficulty": 67,
+    "intent": "commercial",
+    "assigned_article_id": null,
+    "current_position": null
+  }
+]
