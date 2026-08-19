@@ -22,6 +22,34 @@ export default function ArticlesPage() {
     return true;
   });
 
+  function exportToCSV() {
+    const headers = ["Title", "Site", "Status", "Word Count", "Sessions (30d)"];
+    const rows = filtered.map((a) => {
+      const site = sites.find((s) => s.id === a.site_id);
+      return [
+        a.title,
+        site?.name ?? "",
+        a.status,
+        a.word_count,
+        a.organic_sessions_30d,
+      ];
+    });
+
+    const csvContent = [headers, ...rows]
+      .map((row) =>
+        row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","),
+      )
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "articles.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div style={{ padding: 24 }}>
       <h1>Articles ({filtered.length})</h1>
@@ -57,6 +85,8 @@ export default function ArticlesPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+
+        <button onClick={exportToCSV}>Export CSV</button>
       </div>
 
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
