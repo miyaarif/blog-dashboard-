@@ -11,7 +11,9 @@ export default function CharCounter({
   const inRange = len >= min && len <= max;
 
   return (
-    <span style={{ fontSize: 12, color: inRange ? "#16a34a" : "#dc2626" }}>
+    <span
+      className={`text-xs font-medium ${inRange ? "text-emerald-600" : "text-red-600"}`}
+    >
       {len} / {min}-{max} ideal
     </span>
   );

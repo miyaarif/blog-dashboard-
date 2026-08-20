@@ -7,17 +7,27 @@ export default function Home() {
   const articles = getArticles();
 
   return (
-    <div style={{ padding: 24 }}>
-      <h1>Network overview</h1>
+    <div className="mx-auto max-w-7xl px-6 py-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">
+            Network overview
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            {sites.length} sites &middot; {articles.length} articles across
+            the network
+          </p>
+        </div>
+        <Link
+          href="/articles"
+          className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+        >
+          View all articles
+          <span aria-hidden>→</span>
+        </Link>
+      </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 16,
-          marginTop: 16,
-        }}
-      >
+      <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {sites.map((site) => {
           const siteArticles = articles.filter((a) => a.site_id === site.id);
           const publishedCount = siteArticles.filter(
@@ -37,42 +47,39 @@ export default function Home() {
             <Link
               key={site.id}
               href={`/sites/${site.id}`}
-              style={{
-                display: "block",
-                border: "1px solid #333",
-                borderRadius: 8,
-                padding: 16,
-                textDecoration: "none",
-                color: "inherit",
-              }}
+              className="group rounded-lg border border-gray-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
             >
-              <SiteBadge site={site} />
-              <div style={{ fontSize: 24, fontWeight: 600, marginTop: 8 }}>
-                {siteArticles.length} articles
+              <div className="flex items-start justify-between">
+                <SiteBadge site={site} />
+                <span
+                  className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                    onTarget
+                      ? "bg-emerald-50 text-emerald-700"
+                      : "bg-red-50 text-red-700"
+                  }`}
+                >
+                  {onTarget ? "On target" : "Behind target"}
+                </span>
               </div>
-              <div style={{ fontSize: 13, color: "#888", marginTop: 4 }}>
-                {publishedCount} published &middot; {totalTraffic} sessions/30d
+
+              <div className="mt-4 text-3xl font-semibold text-gray-900">
+                {siteArticles.length}
+                <span className="ml-1.5 text-sm font-normal text-gray-400">
+                  articles
+                </span>
               </div>
-              <span
-                style={{
-                  display: "inline-block",
-                  marginTop: 8,
-                  fontSize: 12,
-                  padding: "2px 8px",
-                  borderRadius: 4,
-                  backgroundColor: onTarget ? "#dcfce7" : "#fee2e2",
-                  color: onTarget ? "#166534" : "#991b1b",
-                }}
-              >
-                {onTarget ? "On target" : "Behind target"}
-              </span>
+              <div className="mt-1 text-sm text-gray-500">
+                {publishedCount} published &middot; {totalTraffic} sessions /
+                30d
+              </div>
+
+              <div className="mt-4 flex items-center gap-1 text-sm font-medium text-gray-500 group-hover:text-gray-900">
+                View site
+                <span aria-hidden>→</span>
+              </div>
             </Link>
           );
         })}
-      </div>
-
-      <div style={{ marginTop: 32 }}>
-        <Link href="/articles">View all articles →</Link>
       </div>
     </div>
   );

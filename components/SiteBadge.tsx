@@ -2,28 +2,15 @@ import { Site, isFinanceSite } from "@/types";
 
 export default function SiteBadge({ site }: { site: Site }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+    <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-900">
       <span
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          backgroundColor: site.primary_colour,
-          display: "inline-block",
-        }}
+        className="inline-block h-2 w-2 shrink-0 rounded-full"
+        style={{ backgroundColor: site.primary_colour }}
       />
       {site.name}
       {isFinanceSite(site) && (
-        <span
-          style={{
-            fontSize: 11,
-            color: "#92400e",
-            backgroundColor: "#fef3c7",
-            padding: "2px 6px",
-            borderRadius: 4,
-          }}
-        >
-          finance
+        <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+          Finance
         </span>
       )}
     </span>
