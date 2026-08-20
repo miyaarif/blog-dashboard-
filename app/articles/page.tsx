@@ -103,9 +103,7 @@ export default function ArticlesPage() {
             return (
               <tr key={a.id} style={{ borderTop: "1px solid #e5e7eb" }}>
                 <td style={{ padding: 8 }}>
-                  <Link href={`/articles/${a.id}`}>{a.title}</Link>
-                  {" — "}
-                  <Link href={`/editor/${a.id}`}>edit</Link>
+                  <Link href={`/editor/${a.id}`}>{a.title}</Link>
                 </td>
                 <td style={{ padding: 8 }}>
                   {site && <SiteBadge site={site} />}
