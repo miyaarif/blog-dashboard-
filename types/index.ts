@@ -37,7 +37,7 @@ export interface Article {
   reviewed_by: string | null;
   reviewed_at: string | null;
   sources: string[];
-  affiliate_disclosure: string | null;
+  affiliate_disclosure: boolean | null;
   last_updated: string;
   internal_links: string[];
   scheduled_for: string | null;

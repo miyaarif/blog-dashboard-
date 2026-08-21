@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { getSites, getArticles } from "@/lib/sites";
+import { getArticlesWithLocalEdits } from "@/lib/storage";
 import SiteBadge from "@/components/SiteBadge";
 import StatusPill from "@/components/StatusPill";
 import { EyeIcon, PencilIcon } from "@/components/icons";
+import type { Article } from "@/types";
 
 const STATUS_OPTIONS = [
   "idea",
@@ -18,7 +20,11 @@ const STATUS_OPTIONS = [
 
 export default function ArticlesPage() {
   const sites = getSites();
-  const articles = getArticles();
+  const [articles, setArticles] = useState<Article[]>(getArticles());
+
+  useEffect(() => {
+    setArticles(getArticlesWithLocalEdits(getArticles()));
+  }, []);
 
   const [siteFilter, setSiteFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -61,8 +67,8 @@ export default function ArticlesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
-      <div className="flex items-center justify-between">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">
             Articles
@@ -71,26 +77,34 @@ export default function ArticlesPage() {
             {filtered.length} of {articles.length} articles
           </p>
         </div>
-        <button
-          onClick={exportToCSV}
-          className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
-        >
-          Export CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={exportToCSV}
+            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          >
+            Export CSV
+          </button>
+          <Link
+            href="/editor/new"
+            className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+          >
+            + New article
+          </Link>
+        </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-white p-4">
+      <div className="mt-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:flex-wrap sm:items-center">
         <input
           placeholder="Search title…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="min-w-[220px] flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+          className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none sm:min-w-[220px] sm:flex-1"
         />
 
         <select
           value={siteFilter}
           onChange={(e) => setSiteFilter(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+          className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none sm:w-auto"
         >
           <option value="all">All sites</option>
           {sites.map((s) => (
@@ -103,7 +117,7 @@ export default function ArticlesPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+          className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none sm:w-auto"
         >
           <option value="all">All statuses</option>
           {STATUS_OPTIONS.map((s) => (
@@ -114,7 +128,8 @@ export default function ArticlesPage() {
         </select>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white">
+      {/* Desktop / tablet table */}
+      <div className="mt-4 hidden overflow-hidden rounded-lg border border-gray-200 bg-white sm:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
@@ -191,6 +206,48 @@ export default function ArticlesPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile card list */}
+      <div className="mt-4 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white sm:hidden">
+        {filtered.map((a) => {
+          const site = sites.find((s) => s.id === a.site_id);
+          return (
+            <div key={a.id} className="p-4">
+              <Link
+                href={`/articles/${a.id}`}
+                className="font-medium text-gray-900 hover:underline"
+              >
+                {a.title}
+              </Link>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {site && <SiteBadge site={site} />}
+                <StatusPill status={a.status} />
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <Link
+                  href={`/articles/${a.id}`}
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <EyeIcon className="h-3.5 w-3.5" />
+                  Read
+                </Link>
+                <Link
+                  href={`/editor/${a.id}`}
+                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <PencilIcon className="h-3.5 w-3.5" />
+                  Edit
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div className="p-8 text-center text-sm text-gray-400">
+            No articles match these filters.
+          </div>
+        )}
       </div>
     </div>
   );

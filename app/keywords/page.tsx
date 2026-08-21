@@ -23,7 +23,7 @@ export default function KeywordsPage() {
   );
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">
         ← Back to overview
       </Link>
@@ -51,7 +51,8 @@ export default function KeywordsPage() {
         </div>
       )}
 
-      <div className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white">
+      {/* Desktop / tablet table */}
+      <div className="mt-4 hidden overflow-hidden rounded-lg border border-gray-200 bg-white sm:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[560px] text-sm">
             <thead>
@@ -110,6 +111,29 @@ export default function KeywordsPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile card list */}
+      <div className="mt-4 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white sm:hidden">
+        {unassigned.map((k) => {
+          const site = getSiteById(k.site_id);
+          return (
+            <div key={k.keyword} className="p-4">
+              <p className="font-medium text-gray-900">{k.keyword}</p>
+              <div className="mt-1.5">{site && <SiteBadge site={site} />}</div>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                <span>Volume: {k.monthly_volume}</span>
+                <span>Difficulty: {k.difficulty}</span>
+                <span>Intent: {k.intent}</span>
+              </div>
+            </div>
+          );
+        })}
+        {unassigned.length === 0 && (
+          <div className="p-8 text-center text-sm text-gray-400">
+            No unassigned keywords.
+          </div>
+        )}
       </div>
     </div>
   );

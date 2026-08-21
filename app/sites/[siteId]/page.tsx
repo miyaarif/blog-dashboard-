@@ -34,7 +34,7 @@ export default function SitePage({
     .slice(0, 5);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">
         ← Back to overview
       </Link>
@@ -69,7 +69,7 @@ export default function SitePage({
         {topPerformers.map((a, i) => (
           <div
             key={a.id}
-            className={`flex items-center justify-between gap-4 px-4 py-3 text-sm ${
+            className={`flex flex-col gap-2 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${
               i !== topPerformers.length - 1 ? "border-b border-gray-100" : ""
             }`}
           >
@@ -110,7 +110,8 @@ export default function SitePage({
       <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-gray-500">
         Keywords ({keywords.length})
       </h2>
-      <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white">
+      {/* Desktop / tablet table */}
+      <div className="mt-3 hidden overflow-hidden rounded-lg border border-gray-200 bg-white sm:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[480px] text-sm">
             <thead>
@@ -154,6 +155,27 @@ export default function SitePage({
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile card list */}
+      <div className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white sm:hidden">
+        {keywords.map((k) => (
+          <div
+            key={k.keyword}
+            className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
+          >
+            <span className="text-gray-900">{k.keyword}</span>
+            <span className="shrink-0 text-xs text-gray-500">
+              {k.monthly_volume} vol &middot;{" "}
+              {k.current_position ?? "unranked"}
+            </span>
+          </div>
+        ))}
+        {keywords.length === 0 && (
+          <div className="px-4 py-8 text-center text-sm text-gray-400">
+            No keywords assigned.
+          </div>
+        )}
       </div>
     </div>
   );

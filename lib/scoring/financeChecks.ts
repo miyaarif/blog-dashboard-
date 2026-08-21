@@ -24,9 +24,7 @@ export function runFinanceChecks(article: Article): CheckResult[] {
       message: "Finance content should cite at least 2 quality sources",
     },
     {
-      passed:
-        article.affiliate_disclosure !== null &&
-        article.affiliate_disclosure.length > 0,
+      passed: article.affiliate_disclosure === true,
       message: "Affiliate disclosure is required",
     },
     {

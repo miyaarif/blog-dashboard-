@@ -23,3 +23,13 @@ export function getArticleWithEdits(id: string, fallback: Article): Article {
   const stored = loadStoredArticles();
   return stored[id] ?? fallback;
 }
+
+export function getArticlesWithLocalEdits(
+  staticArticles: Article[],
+): Article[] {
+  const stored = loadStoredArticles();
+  const merged = staticArticles.map((a) => stored[a.id] ?? a);
+  const staticIds = new Set(staticArticles.map((a) => a.id));
+  const newOnes = Object.values(stored).filter((a) => !staticIds.has(a.id));
+  return [...merged, ...newOnes];
+}

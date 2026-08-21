@@ -44,7 +44,7 @@ export default function CalendarPage() {
   const worstGap = gaps.reduce((max, g) => Math.max(max, g.days), 0);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <h1 className="text-2xl font-semibold text-gray-900">
         Publishing calendar
       </h1>
@@ -141,7 +141,9 @@ export default function CalendarPage() {
       <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-gray-500">
         All scheduled / published dates
       </h2>
-      <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white">
+
+      {/* Desktop / tablet table */}
+      <div className="mt-3 hidden overflow-hidden rounded-lg border border-gray-200 bg-white sm:block">
         <div className="max-h-[480px] overflow-y-auto overflow-x-auto">
           <table className="w-full min-w-[520px] text-sm">
             <thead>
@@ -185,6 +187,27 @@ export default function CalendarPage() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      {/* Mobile card list */}
+      <div className="mt-3 max-h-[480px] divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 bg-white sm:hidden">
+        {sortedDates.map((date) =>
+          byDate[date].map((a) => {
+            const site = getSiteById(a.site_id);
+            return (
+              <div key={a.id} className="p-4">
+                <p className="text-xs text-gray-400">{date}</p>
+                <Link
+                  href={`/articles/${a.id}`}
+                  className="mt-1 block font-medium text-gray-900 hover:underline"
+                >
+                  {a.title}
+                </Link>
+                <div className="mt-1.5">{site && <SiteBadge site={site} />}</div>
+              </div>
+            );
+          }),
+        )}
       </div>
     </div>
   );

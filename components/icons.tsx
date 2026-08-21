@@ -33,6 +33,34 @@ export function AlertIcon({ className }: { className?: string }) {
   );
 }
 
+export function MenuIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      className={className}
+    >
+      <path d="M3 5.5h14M3 10h14M3 14.5h14" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      className={className}
+    >
+      <path d="M5 5l10 10M15 5L5 15" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function PencilIcon({ className }: { className?: string }) {
   return (
     <svg
