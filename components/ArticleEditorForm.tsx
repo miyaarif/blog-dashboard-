@@ -273,6 +273,17 @@ export default function ArticleEditorForm({
             <p className="text-sm font-semibold text-gray-900">
               Score: {score} / 100
             </p>
+            {gate.duplicateOf.length > 0 && (
+              <p className="mt-2 rounded-md bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700">
+                Duplicate content — matches:{" "}
+                {gate.duplicateOf
+                  .map(
+                    (id) =>
+                      allArticles.find((a) => a.id === id)?.title ?? id,
+                  )
+                  .join(", ")}
+              </p>
+            )}
             {reasons.length > 0 && (
               <ul className="mt-2 space-y-1">
                 {reasons.map((r, i) => (

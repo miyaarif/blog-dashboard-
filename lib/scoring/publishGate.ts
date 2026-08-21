@@ -9,6 +9,7 @@ import {
 export interface GateResult {
   canPublish: boolean;
   reasons: string[];
+  duplicateOf: string[];
 }
 
 const MIN_SCORE_TO_PUBLISH = 70;
@@ -23,6 +24,7 @@ export function checkPublishGate(
   const duplicate = isDuplicate(article.id, groups);
 
   const reasons: string[] = [];
+  let duplicateOf: string[] = [];
 
   if (score < MIN_SCORE_TO_PUBLISH) {
     reasons.push(
@@ -33,9 +35,9 @@ export function checkPublishGate(
 
   if (duplicate) {
     const group = groups.find((g) => g.articleIds.includes(article.id))!;
-    const others = group.articleIds.filter((id) => id !== article.id);
-    reasons.push(`Matches duplicate group with: ${others.join(", ")}`);
+    duplicateOf = group.articleIds.filter((id) => id !== article.id);
+    reasons.push(`Matches duplicate group with: ${duplicateOf.join(", ")}`);
   }
 
-  return { canPublish: reasons.length === 0, reasons };
+  return { canPublish: reasons.length === 0, reasons, duplicateOf };
 }
