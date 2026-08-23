@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { getKeywords, getSiteById } from "@/lib/sites";
+import { getKeywords, getSites } from "@/lib/sites";
 import SiteBadge from "@/components/SiteBadge";
 
-export default function KeywordsPage() {
-  const keywords = getKeywords();
+export default async function KeywordsPage() {
+  const [keywords, sites] = await Promise.all([getKeywords(), getSites()]);
+  const sitesById = new Map(sites.map((s) => [s.id, s]));
 
   const unassigned = keywords
     .filter((k) => k.assigned_article_id === null)
@@ -76,7 +77,7 @@ export default function KeywordsPage() {
             </thead>
             <tbody>
               {unassigned.map((k) => {
-                const site = getSiteById(k.site_id);
+                const site = sitesById.get(k.site_id);
                 return (
                   <tr
                     key={k.keyword}
@@ -116,7 +117,7 @@ export default function KeywordsPage() {
       {/* Mobile card list */}
       <div className="mt-4 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white sm:hidden">
         {unassigned.map((k) => {
-          const site = getSiteById(k.site_id);
+          const site = sitesById.get(k.site_id);
           return (
             <div key={k.keyword} className="p-4">
               <p className="font-medium text-gray-900">{k.keyword}</p>

@@ -42,6 +42,7 @@ export default function ArticleEditorForm({
 }) {
   const [article, setArticle] = useState<Article>(initialArticle);
   const [savedMessage, setSavedMessage] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const currentSite = sites.find((s) => s.id === article.site_id)!;
   const financeSite = isFinanceSite(currentSite);
@@ -68,16 +69,23 @@ export default function ArticleEditorForm({
     update("sources", sources);
   }
 
-  function handleSave() {
+  async function handleSave() {
     const toSave: Article = {
       ...article,
       slug: article.slug || slugify(article.title),
     };
-    saveArticle(toSave);
-    setArticle(toSave);
-    setSavedMessage("Saved");
-    setTimeout(() => setSavedMessage(""), 2000);
-    onSaved?.(toSave);
+    setSaving(true);
+    try {
+      const saved = await saveArticle(toSave);
+      setArticle(saved);
+      setSavedMessage("Saved");
+      setTimeout(() => setSavedMessage(""), 2000);
+      onSaved?.(saved);
+    } catch {
+      setSavedMessage("Save failed — try again");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -91,15 +99,22 @@ export default function ArticleEditorForm({
         </Link>
         <div className="flex items-center gap-2">
           {savedMessage && (
-            <span className="text-sm font-medium text-emerald-600">
+            <span
+              className={`text-sm font-medium ${
+                savedMessage === "Saved"
+                  ? "text-emerald-600"
+                  : "text-red-600"
+              }`}
+            >
               {savedMessage}
             </span>
           )}
           <button
             onClick={handleSave}
-            className="inline-flex items-center rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+            disabled={saving}
+            className="inline-flex items-center rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            Save
+            {saving ? "Saving…" : "Save"}
           </button>
         </div>
       </div>

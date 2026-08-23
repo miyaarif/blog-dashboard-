@@ -1,46 +1,28 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { use } from "react";
-import { getArticles, getSites } from "@/lib/sites";
-import { loadStoredArticles } from "@/lib/storage";
+import { notFound } from "next/navigation";
+import { getArticleById, getArticles, getSites } from "@/lib/sites";
 import ArticleEditorForm from "@/components/ArticleEditorForm";
-import type { Article } from "@/types";
 
-export default function EditorPage({
+export default async function EditorPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
-  const sites = getSites();
-  const allArticles = getArticles();
+  const { id } = await params;
 
-  const [status, setStatus] = useState<
-    { state: "loading" } | { state: "ready"; article: Article } | { state: "not-found" }
-  >({ state: "loading" });
+  const [article, sites, allArticles] = await Promise.all([
+    getArticleById(id),
+    getSites(),
+    getArticles(),
+  ]);
 
-  useEffect(() => {
-    const stored = loadStoredArticles()[id];
-    const base = stored ?? allArticles.find((a) => a.id === id);
-    setStatus(base ? { state: "ready", article: base } : { state: "not-found" });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  if (status.state === "loading") return null;
-
-  if (status.state === "not-found") {
-    return (
-      <div className="mx-auto max-w-3xl px-6 py-8">
-        <p className="text-sm text-gray-600">Article not found.</p>
-      </div>
-    );
+  if (!article) {
+    notFound();
   }
 
   return (
     <ArticleEditorForm
       key={id}
-      initialArticle={status.article}
+      initialArticle={article}
       sites={sites}
       allArticles={allArticles}
       isNew={false}

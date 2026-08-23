@@ -1,17 +1,16 @@
-import { use } from "react";
 import Link from "next/link";
 import { getSiteById, getArticlesBySite, getKeywordsBySite } from "@/lib/sites";
 import SiteBadge from "@/components/SiteBadge";
 import StatusPill from "@/components/StatusPill";
 import { EyeIcon, PencilIcon } from "@/components/icons";
 
-export default function SitePage({
+export default async function SitePage({
   params,
 }: {
   params: Promise<{ siteId: string }>;
 }) {
-  const { siteId } = use(params);
-  const site = getSiteById(siteId);
+  const { siteId } = await params;
+  const site = await getSiteById(siteId);
 
   if (!site) {
     return (
@@ -21,8 +20,10 @@ export default function SitePage({
     );
   }
 
-  const articles = getArticlesBySite(siteId);
-  const keywords = getKeywordsBySite(siteId);
+  const [articles, keywords] = await Promise.all([
+    getArticlesBySite(siteId),
+    getKeywordsBySite(siteId),
+  ]);
 
   const statusCounts: Record<string, number> = {};
   articles.forEach((a) => {

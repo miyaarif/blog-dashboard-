@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getArticles, getSiteById } from "@/lib/sites";
+import { getArticles, getSites } from "@/lib/sites";
 import SiteBadge from "@/components/SiteBadge";
 import { AlertIcon } from "@/components/icons";
 
@@ -9,8 +9,9 @@ function gapSeverity(days: number): { label: string; classes: string } {
   return { label: "Minor", classes: "bg-gray-100 text-gray-600" };
 }
 
-export default function CalendarPage() {
-  const articles = getArticles();
+export default async function CalendarPage() {
+  const [articles, sites] = await Promise.all([getArticles(), getSites()]);
+  const sitesById = new Map(sites.map((s) => [s.id, s]));
 
   // group by scheduled_for or published_at date
   const dated = articles.filter((a) => a.scheduled_for || a.published_at);
@@ -81,7 +82,7 @@ export default function CalendarPage() {
                     </div>
                     <ul className="mt-1.5 space-y-1">
                       {byDate[d].map((a) => {
-                        const site = getSiteById(a.site_id);
+                        const site = sitesById.get(a.site_id);
                         return (
                           <li key={a.id} className="flex items-center gap-2">
                             {site && <SiteBadge site={site} />}
@@ -162,7 +163,7 @@ export default function CalendarPage() {
             <tbody>
               {sortedDates.map((date) =>
                 byDate[date].map((a) => {
-                  const site = getSiteById(a.site_id);
+                  const site = sitesById.get(a.site_id);
                   return (
                     <tr
                       key={a.id}
@@ -193,7 +194,7 @@ export default function CalendarPage() {
       <div className="mt-3 max-h-[480px] divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 bg-white sm:hidden">
         {sortedDates.map((date) =>
           byDate[date].map((a) => {
-            const site = getSiteById(a.site_id);
+            const site = sitesById.get(a.site_id);
             return (
               <div key={a.id} className="p-4">
                 <p className="text-xs text-gray-400">{date}</p>

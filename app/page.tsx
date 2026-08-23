@@ -2,9 +2,9 @@ import { getSites, getArticles } from "@/lib/sites";
 import Link from "next/link";
 import SiteBadge from "@/components/SiteBadge";
 
-export default function Home() {
-  const sites = getSites();
-  const articles = getArticles();
+export default async function Home() {
+  const sites = await getSites();
+  const articles = await getArticles();
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">

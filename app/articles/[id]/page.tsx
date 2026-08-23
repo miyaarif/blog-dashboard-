@@ -1,48 +1,25 @@
-"use client";
-
-import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { getArticles, getSiteById } from "@/lib/sites";
-import { loadStoredArticles } from "@/lib/storage";
+import { getArticleById, getSiteById } from "@/lib/sites";
 import SiteBadge from "@/components/SiteBadge";
 import StatusPill from "@/components/StatusPill";
 import { PencilIcon } from "@/components/icons";
-import type { Article } from "@/types";
 
-export default function ArticleReadPage({
+export default async function ArticleReadPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
+  const { id } = await params;
+  const article = await getArticleById(id);
 
-  const [status, setStatus] = useState<
-    { state: "loading" } | { state: "ready"; article: Article } | { state: "not-found" }
-  >({ state: "loading" });
-
-  useEffect(() => {
-    const stored = loadStoredArticles()[id];
-    const base = stored ?? getArticles().find((a) => a.id === id);
-    setStatus(base ? { state: "ready", article: base } : { state: "not-found" });
-  }, [id]);
-
-  if (status.state === "loading") return null;
-
-  if (status.state === "not-found") {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
-        <Link href="/articles" className="text-sm text-gray-500 hover:text-gray-900">
-          ← Back to articles
-        </Link>
-        <p className="mt-6 text-sm text-gray-600">Article not found.</p>
-      </div>
-    );
+  if (!article) {
+    notFound();
   }
 
-  const article = status.article;
-  const site = getSiteById(article.site_id);
+  const site = await getSiteById(article.site_id);
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
