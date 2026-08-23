@@ -7,6 +7,8 @@ import SiteBadge from "@/components/SiteBadge";
 import StatusPill from "@/components/StatusPill";
 import { PencilIcon } from "@/components/icons";
 
+export const dynamic = "force-dynamic";
+
 export default async function ArticleReadPage({
   params,
 }: {

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 
+export const dynamic = "force-dynamic";
+
 const DETAIL_FIELDS =
   "slug,title,meta_description,body_markdown,target_keyword,word_count,hero_image_url,hero_image_alt,author_name,author_credentials,reviewed_by,reviewed_at,sources,affiliate_disclosure,published_at,last_updated";
 

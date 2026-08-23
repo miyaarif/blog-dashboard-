@@ -2,6 +2,8 @@ import { getSites, getArticles } from "@/lib/sites";
 import Link from "next/link";
 import SiteBadge from "@/components/SiteBadge";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const sites = await getSites();
   const articles = await getArticles();

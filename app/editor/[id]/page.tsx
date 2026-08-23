@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { getArticleById, getArticles, getSites } from "@/lib/sites";
 import ArticleEditorForm from "@/components/ArticleEditorForm";
 
+export const dynamic = "force-dynamic";
+
 export default async function EditorPage({
   params,
 }: {

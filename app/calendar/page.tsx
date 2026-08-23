@@ -3,6 +3,8 @@ import { getArticles, getSites } from "@/lib/sites";
 import SiteBadge from "@/components/SiteBadge";
 import { AlertIcon } from "@/components/icons";
 
+export const dynamic = "force-dynamic";
+
 function gapSeverity(days: number): { label: string; classes: string } {
   if (days >= 14) return { label: "Critical", classes: "bg-red-50 text-red-700" };
   if (days >= 7) return { label: "Warning", classes: "bg-amber-50 text-amber-700" };

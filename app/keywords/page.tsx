@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getKeywords, getSites } from "@/lib/sites";
 import SiteBadge from "@/components/SiteBadge";
 
+export const dynamic = "force-dynamic";
+
 export default async function KeywordsPage() {
   const [keywords, sites] = await Promise.all([getKeywords(), getSites()]);
   const sitesById = new Map(sites.map((s) => [s.id, s]));
