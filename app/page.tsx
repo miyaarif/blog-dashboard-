@@ -1,6 +1,7 @@
 import { getSites, getArticles } from "@/lib/sites";
 import Link from "next/link";
 import SiteBadge from "@/components/SiteBadge";
+import DashboardCharts from "@/components/DashboardCharts";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +84,8 @@ export default async function Home() {
           );
         })}
       </div>
+
+      <DashboardCharts sites={sites} articles={articles} />
     </div>
   );
 }
