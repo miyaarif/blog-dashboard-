@@ -435,6 +435,14 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
               "en-US",
               { month: "short", day: "numeric", timeZone: "UTC" },
             );
+            const weekEnd = weekEndOf(w.weekStart);
+            const endLabel = new Date(weekEnd + "T00:00:00Z").toLocaleDateString(
+              "en-US",
+              { month: "short", day: "numeric", timeZone: "UTC" },
+            );
+            // The week's Monday itself often has zero published articles —
+            // showing only the start date reads as "should be on this day."
+            const rangeLabel = `${label}–${endLabel}`;
             return (
               <g key={w.weekStart}>
                 <AnimatedBar
@@ -445,14 +453,14 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
                   opacity={1}
                   onEnter={(e) =>
                     showTooltip(e, [
-                      `Week of ${label}`,
+                      `Week of ${rangeLabel}`,
                       `${w.count} published`,
                       ...(w.count > 0 ? ["Click to view articles"] : []),
                     ])
                   }
                   onMove={(e) =>
                     showTooltip(e, [
-                      `Week of ${label}`,
+                      `Week of ${rangeLabel}`,
                       `${w.count} published`,
                       ...(w.count > 0 ? ["Click to view articles"] : []),
                     ])

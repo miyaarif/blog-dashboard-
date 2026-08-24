@@ -23,6 +23,18 @@ function formatWeekLabel(weekStart: string): string {
   });
 }
 
+// The week's Monday itself often has zero activity — the count is spread
+// across the other 6 days. Showing only the start date reads as "this
+// should be on the 8th"; the full range makes clear it's a 7-day span.
+function formatWeekRange(weekStart: string): string {
+  const start = new Date(weekStart + "T00:00:00Z");
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 6);
+  const startLabel = formatWeekLabel(weekStart);
+  const endLabel = end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${startLabel}–${endLabel}`;
+}
+
 interface Week {
   weekStart: string;
   count: number;
@@ -114,7 +126,7 @@ function AreaChart({
           className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg"
           style={{ left: xAt(hoverIndex!), top: yAt(hovered.count) - 8 }}
         >
-          <div className="font-semibold">Week of {formatWeekLabel(hovered.weekStart)}</div>
+          <div className="font-semibold">Week of {formatWeekRange(hovered.weekStart)}</div>
           <div className="text-gray-300">
             {hovered.count} {noun}
           </div>
