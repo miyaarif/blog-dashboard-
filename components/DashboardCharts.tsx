@@ -322,7 +322,14 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
   );
 }
 
+function weekEndOf(weekStart: string): string {
+  const d = new Date(weekStart + "T00:00:00Z");
+  d.setUTCDate(d.getUTCDate() + 6);
+  return d.toISOString().slice(0, 10);
+}
+
 function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const mounted = useMountedAfterPaint();
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
@@ -437,12 +444,28 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
                   delayMs={i * 10}
                   opacity={1}
                   onEnter={(e) =>
-                    showTooltip(e, [`Week of ${label}`, `${w.count} published`])
+                    showTooltip(e, [
+                      `Week of ${label}`,
+                      `${w.count} published`,
+                      ...(w.count > 0 ? ["Click to view articles"] : []),
+                    ])
                   }
                   onMove={(e) =>
-                    showTooltip(e, [`Week of ${label}`, `${w.count} published`])
+                    showTooltip(e, [
+                      `Week of ${label}`,
+                      `${w.count} published`,
+                      ...(w.count > 0 ? ["Click to view articles"] : []),
+                    ])
                   }
                   onLeave={() => setTooltip(null)}
+                  onClick={
+                    w.count > 0
+                      ? () =>
+                          router.push(
+                            `/articles?from=${w.weekStart}&to=${weekEndOf(w.weekStart)}`,
+                          )
+                      : undefined
+                  }
                 />
                 {showLabel && (
                   <text

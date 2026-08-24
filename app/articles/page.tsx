@@ -6,10 +6,15 @@ export const dynamic = "force-dynamic";
 export default async function ArticlesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ site?: string; status?: string }>;
+  searchParams: Promise<{
+    site?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+  }>;
 }) {
   const [sites, articles] = await Promise.all([getSites(), getArticles()]);
-  const { site, status } = await searchParams;
+  const { site, status, from, to } = await searchParams;
 
   return (
     <ArticlesTable
@@ -17,6 +22,8 @@ export default async function ArticlesPage({
       articles={articles}
       initialSiteFilter={site}
       initialStatusFilter={status}
+      initialFrom={from}
+      initialTo={to}
     />
   );
 }

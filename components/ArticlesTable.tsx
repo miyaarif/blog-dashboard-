@@ -16,26 +16,47 @@ const STATUS_OPTIONS = [
   "published",
 ];
 
+function formatDateLabel(iso: string): string {
+  return new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export default function ArticlesTable({
   sites,
   articles,
   initialSiteFilter,
   initialStatusFilter,
+  initialFrom,
+  initialTo,
 }: {
   sites: Site[];
   articles: Article[];
   initialSiteFilter?: string;
   initialStatusFilter?: string;
+  initialFrom?: string;
+  initialTo?: string;
 }) {
   const [siteFilter, setSiteFilter] = useState(initialSiteFilter ?? "all");
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter ?? "all");
   const [search, setSearch] = useState("");
+  const [dateRange, setDateRange] = useState(
+    initialFrom && initialTo ? { from: initialFrom, to: initialTo } : null,
+  );
 
   const filtered = articles.filter((a) => {
     if (siteFilter !== "all" && a.site_id !== siteFilter) return false;
     if (statusFilter !== "all" && a.status !== statusFilter) return false;
     if (search && !a.title.toLowerCase().includes(search.toLowerCase()))
       return false;
+    if (dateRange) {
+      if (!a.published_at) return false;
+      const publishedDate = a.published_at.split("T")[0];
+      if (publishedDate < dateRange.from || publishedDate > dateRange.to)
+        return false;
+    }
     return true;
   });
 
@@ -128,6 +149,23 @@ export default function ArticlesTable({
           ))}
         </select>
       </div>
+
+      {dateRange && (
+        <div className="mt-3 flex items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+            Published {formatDateLabel(dateRange.from)}–
+            {formatDateLabel(dateRange.to)}
+            <button
+              type="button"
+              onClick={() => setDateRange(null)}
+              aria-label="Clear date filter"
+              className="ml-0.5 text-gray-400 hover:text-gray-700"
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* Desktop / tablet table */}
       <div className="mt-4 hidden overflow-hidden rounded-lg border border-gray-200 bg-white sm:block">
