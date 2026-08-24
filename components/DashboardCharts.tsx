@@ -149,8 +149,8 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
   const baseline = padTop + plotH;
 
   const groupW = plotW / STATUS_ORDER.length;
-  const barW = 14;
-  const barGap = 3;
+  const barW = 10;
+  const barGap = 5;
   const groupContentW = siteOrder.length * barW + (siteOrder.length - 1) * barGap;
 
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(maxCount * f));
@@ -196,6 +196,7 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
                   y2={y}
                   stroke="#e1e0d9"
                   strokeWidth={1}
+                  opacity={0.6}
                 />
                 <text
                   x={padLeft - 6}
@@ -217,6 +218,7 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
             y2={baseline}
             stroke="#c3c2b7"
             strokeWidth={1}
+            opacity={0.7}
           />
 
           {STATUS_ORDER.map((status, gi) => {
@@ -377,6 +379,7 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
                   y2={y}
                   stroke="#e1e0d9"
                   strokeWidth={1}
+                  opacity={0.6}
                 />
                 <text
                   x={padLeft - 6}
@@ -398,6 +401,7 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
             y2={baseline}
             stroke="#c3c2b7"
             strokeWidth={1}
+            opacity={0.7}
           />
 
           {weeks.map((w, i) => {
@@ -412,7 +416,7 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
             return (
               <g key={w.weekStart}>
                 <AnimatedBar
-                  d={barPath(x, barTop, barW, baseline, 3)}
+                  d={barPath(x, barTop, barW, baseline, 4)}
                   fill={TREND_COLOR}
                   mounted={mounted}
                   delayMs={i * 10}
