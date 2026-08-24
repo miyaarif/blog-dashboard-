@@ -32,6 +32,15 @@ export default async function ArticleReadPage({
         ← Back to articles
       </Link>
 
+      {article.hero_image_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={article.hero_image_url}
+          alt={article.hero_image_alt ?? ""}
+          className="mt-4 aspect-[1200/630] w-full rounded-lg border border-gray-200 object-cover"
+        />
+      )}
+
       <div className="mt-4 flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">

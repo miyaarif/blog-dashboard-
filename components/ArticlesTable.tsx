@@ -131,6 +131,7 @@ export default function ArticlesTable({
           <table className="w-full min-w-[720px] text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="w-16 px-4 py-3"></th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
                   Title
                 </th>
@@ -153,6 +154,18 @@ export default function ArticlesTable({
                     key={a.id}
                     className="border-b border-gray-100 last:border-0 hover:bg-gray-50"
                   >
+                    <td className="px-4 py-3">
+                      {a.hero_image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={a.hero_image_url}
+                          alt={a.hero_image_alt ?? ""}
+                          className="h-10 w-14 rounded object-cover"
+                        />
+                      ) : (
+                        <div className="h-10 w-14 rounded bg-gray-100" />
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <Link
                         href={`/articles/${a.id}`}
@@ -193,7 +206,7 @@ export default function ArticlesTable({
               {filtered.length === 0 && (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-4 py-10 text-center text-sm text-gray-400"
                   >
                     No articles match these filters.
@@ -210,32 +223,44 @@ export default function ArticlesTable({
         {filtered.map((a) => {
           const site = sites.find((s) => s.id === a.site_id);
           return (
-            <div key={a.id} className="p-4">
-              <Link
-                href={`/articles/${a.id}`}
-                className="font-medium text-gray-900 hover:underline"
-              >
-                {a.title}
-              </Link>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                {site && <SiteBadge site={site} />}
-                <StatusPill status={a.status} />
-              </div>
-              <div className="mt-3 flex items-center gap-2">
+            <div key={a.id} className="flex gap-3 p-4">
+              {a.hero_image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={a.hero_image_url}
+                  alt={a.hero_image_alt ?? ""}
+                  className="h-14 w-20 shrink-0 rounded object-cover"
+                />
+              ) : (
+                <div className="h-14 w-20 shrink-0 rounded bg-gray-100" />
+              )}
+              <div className="min-w-0 flex-1">
                 <Link
                   href={`/articles/${a.id}`}
-                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  className="font-medium text-gray-900 hover:underline"
                 >
-                  <EyeIcon className="h-3.5 w-3.5" />
-                  Read
+                  {a.title}
                 </Link>
-                <Link
-                  href={`/editor/${a.id}`}
-                  className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  <PencilIcon className="h-3.5 w-3.5" />
-                  Edit
-                </Link>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {site && <SiteBadge site={site} />}
+                  <StatusPill status={a.status} />
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <Link
+                    href={`/articles/${a.id}`}
+                    className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <EyeIcon className="h-3.5 w-3.5" />
+                    Read
+                  </Link>
+                  <Link
+                    href={`/editor/${a.id}`}
+                    className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <PencilIcon className="h-3.5 w-3.5" />
+                    Edit
+                  </Link>
+                </div>
               </div>
             </div>
           );
