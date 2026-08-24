@@ -3,6 +3,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { WeeklyPublishCount } from "@/lib/dashboardStats";
 import type { WeeklyCollisionCount } from "@/lib/calendarStats";
+import { clampTooltipX } from "@/lib/tooltipPosition";
+
+const TOOLTIP_MAX_WIDTH = 180;
 
 // Palette.md categorical slots 4 (yellow/gold) and 5 (magenta/rose) — both
 // documented, both flagged sub-3:1 on a light surface, so neither widget
@@ -53,6 +56,11 @@ function AreaChart({
   const pathRef = useRef<SVGPolylineElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  // The SVG scales to the container's real rendered width via its viewBox,
+  // so mouse coordinates (real screen pixels) and chart coordinates (fixed
+  // viewBox units) are two different scales — this tracks the real width so
+  // both directions can be converted correctly instead of assuming they match.
+  const [renderedWidth, setRenderedWidth] = useState<number | null>(null);
 
   const width = 280;
   const height = 96;
@@ -103,12 +111,28 @@ function AreaChart({
     if (n === 0) return;
     const box = containerRef.current?.getBoundingClientRect();
     if (!box) return;
-    const relX = e.clientX - box.left - padLeft;
+    setRenderedWidth(box.width);
+    // Convert the real-pixel mouse position into viewBox units before
+    // comparing it to plotW (which is in viewBox units, not pixels).
+    const scale = width / box.width;
+    const relX = (e.clientX - box.left) * scale - padLeft;
     const idx = Math.round((relX / plotW) * (n - 1));
     setHoverIndex(Math.max(0, Math.min(n - 1, idx)));
   }
 
   const hovered = hoverIndex !== null ? weeks[hoverIndex] : null;
+  // Convert the hovered point back from viewBox units to real pixels so the
+  // HTML tooltip (positioned outside the scaled SVG) lands in the right spot.
+  const pixelScale = (renderedWidth ?? width) / width;
+  const tooltipLeft =
+    hoverIndex !== null
+      ? clampTooltipX(
+          xAt(hoverIndex) * pixelScale,
+          TOOLTIP_MAX_WIDTH,
+          renderedWidth ?? width,
+        )
+      : 0;
+  const tooltipTop = hovered ? yAt(hovered.count) * pixelScale : 0;
 
   if (n === 0) {
     return <p className="mt-6 text-center text-xs text-gray-400">No data yet.</p>;
@@ -123,8 +147,8 @@ function AreaChart({
     >
       {hovered && (
         <div
-          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg"
-          style={{ left: xAt(hoverIndex!), top: yAt(hovered.count) - 8 }}
+          className="pointer-events-none absolute z-10 max-w-[180px] -translate-x-1/2 -translate-y-full rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg"
+          style={{ left: tooltipLeft, top: tooltipTop - 8 }}
         >
           <div className="font-semibold">Week of {formatWeekRange(hovered.weekStart)}</div>
           <div className="text-gray-300">

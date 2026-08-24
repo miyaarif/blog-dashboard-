@@ -99,14 +99,14 @@ export default function ArticleEditorForm({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link
           href={backHref}
           className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900"
         >
           ← Back
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {savedMessage && (
             <span
               className={`text-sm font-medium ${

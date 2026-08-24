@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertIcon, CloseIcon, SearchIcon } from "@/components/icons";
 import CalendarDayPanel from "@/components/CalendarDayPanel";
+import { clampTooltipX } from "@/lib/tooltipPosition";
 import type { Article, Site } from "@/types";
+
+const TOOLTIP_WIDTH = 256; // matches the w-64 tooltip below
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_LABELS = [
@@ -127,7 +130,12 @@ export default function CalendarGrid({
   function showTooltip(e: React.MouseEvent, key: string) {
     const box = containerRef.current?.getBoundingClientRect();
     if (!box) return;
-    setHover({ key, x: e.clientX - box.left, y: e.clientY - box.top });
+    const rawX = e.clientX - box.left;
+    setHover({
+      key,
+      x: clampTooltipX(rawX, TOOLTIP_WIDTH, box.width),
+      y: e.clientY - box.top,
+    });
   }
 
   return (

@@ -7,12 +7,14 @@ import {
   countsByStatusPerSite,
   publishedPerWeek,
 } from "@/lib/dashboardStats";
+import { clampTooltipX } from "@/lib/tooltipPosition";
 import type { Article, Site } from "@/types";
 
 // Validated categorical palette (dataviz skill, references/palette.md) —
 // first 3 slots pass all-pairs CVD checks, safe for adjacent grouped bars.
 const SITE_COLORS = ["#2a78d6", "#eb6834", "#1baf7a"];
 const TREND_COLOR = "#2a78d6";
+const TOOLTIP_MAX_WIDTH = 220;
 
 const STATUS_LABELS: Record<string, string> = {
   idea: "Idea",
@@ -72,7 +74,7 @@ function ChartTooltip({ tooltip }: { tooltip: TooltipState | null }) {
   if (!tooltip) return null;
   return (
     <div
-      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg transition-[left,top] duration-100 ease-out"
+      className="pointer-events-none absolute z-10 max-w-[220px] -translate-x-1/2 -translate-y-full rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg transition-[left,top] duration-100 ease-out"
       style={{ left: tooltip.x, top: tooltip.y - 10 }}
     >
       {tooltip.lines.map((line, i) => (
@@ -163,7 +165,12 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
   function showTooltip(e: React.MouseEvent, lines: string[]) {
     const box = containerRef.current?.getBoundingClientRect();
     if (!box) return;
-    setTooltip({ x: e.clientX - box.left, y: e.clientY - box.top, lines });
+    const rawX = e.clientX - box.left;
+    setTooltip({
+      x: clampTooltipX(rawX, TOOLTIP_MAX_WIDTH, box.width),
+      y: e.clientY - box.top,
+      lines,
+    });
   }
 
   function toggleSite(siteId: string) {
@@ -339,7 +346,12 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
   function showTooltip(e: React.MouseEvent, lines: string[]) {
     const box = containerRef.current?.getBoundingClientRect();
     if (!box) return;
-    setTooltip({ x: e.clientX - box.left, y: e.clientY - box.top, lines });
+    const rawX = e.clientX - box.left;
+    setTooltip({
+      x: clampTooltipX(rawX, TOOLTIP_MAX_WIDTH, box.width),
+      y: e.clientY - box.top,
+      lines,
+    });
   }
 
   if (weeks.length === 0) {
