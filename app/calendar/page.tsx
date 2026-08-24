@@ -1,49 +1,19 @@
 import Link from "next/link";
 import { getArticles, getSites } from "@/lib/sites";
+import { groupByDate, findCollisions, findGaps, gapSeverity } from "@/lib/calendarStats";
 import SiteBadge from "@/components/SiteBadge";
+import CalendarGrid from "@/components/CalendarGrid";
 import { AlertIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
-
-function gapSeverity(days: number): { label: string; classes: string } {
-  if (days >= 14) return { label: "Critical", classes: "bg-red-50 text-red-700" };
-  if (days >= 7) return { label: "Warning", classes: "bg-amber-50 text-amber-700" };
-  return { label: "Minor", classes: "bg-gray-100 text-gray-600" };
-}
 
 export default async function CalendarPage() {
   const [articles, sites] = await Promise.all([getArticles(), getSites()]);
   const sitesById = new Map(sites.map((s) => [s.id, s]));
 
-  // group by scheduled_for or published_at date
-  const dated = articles.filter((a) => a.scheduled_for || a.published_at);
-
-  const byDate: Record<string, typeof articles> = {};
-  dated.forEach((a) => {
-    const date = (a.scheduled_for || a.published_at)!.split("T")[0];
-    if (!byDate[date]) byDate[date] = [];
-    byDate[date].push(a);
-  });
-
-  const sortedDates = Object.keys(byDate).sort();
-
-  // find collisions: more than one article on the same date
-  const collisions = sortedDates.filter((d) => byDate[d].length > 1);
-
-  // find gaps: more than 3 days between consecutive publish dates
-  const gaps: { from: string; to: string; days: number }[] = [];
-  for (let i = 1; i < sortedDates.length; i++) {
-    const prev = new Date(sortedDates[i - 1]);
-    const curr = new Date(sortedDates[i]);
-    const diffDays = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
-    if (diffDays > 3) {
-      gaps.push({
-        from: sortedDates[i - 1],
-        to: sortedDates[i],
-        days: Math.round(diffDays),
-      });
-    }
-  }
+  const byDate = groupByDate(articles);
+  const collisions = findCollisions(byDate);
+  const gaps = findGaps(byDate);
   const worstGap = gaps.reduce((max, g) => Math.max(max, g.days), 0);
 
   return (
@@ -141,76 +111,8 @@ export default async function CalendarPage() {
         </div>
       )}
 
-      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-gray-500">
-        All scheduled / published dates
-      </h2>
-
-      {/* Desktop / tablet table */}
-      <div className="mt-3 hidden overflow-hidden rounded-lg border border-gray-200 bg-white sm:block">
-        <div className="max-h-[480px] overflow-y-auto overflow-x-auto">
-          <table className="w-full min-w-[520px] text-sm">
-            <thead>
-              <tr className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50">
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Date
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Site
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
-                  Article
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedDates.map((date) =>
-                byDate[date].map((a) => {
-                  const site = sitesById.get(a.site_id);
-                  return (
-                    <tr
-                      key={a.id}
-                      className="border-b border-gray-100 last:border-0 hover:bg-gray-50"
-                    >
-                      <td className="px-4 py-3 text-gray-600">{date}</td>
-                      <td className="px-4 py-3">
-                        {site && <SiteBadge site={site} />}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Link
-                          href={`/articles/${a.id}`}
-                          className="font-medium text-gray-900 hover:underline"
-                        >
-                          {a.title}
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                }),
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Mobile card list */}
-      <div className="mt-3 max-h-[480px] divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200 bg-white sm:hidden">
-        {sortedDates.map((date) =>
-          byDate[date].map((a) => {
-            const site = sitesById.get(a.site_id);
-            return (
-              <div key={a.id} className="p-4">
-                <p className="text-xs text-gray-400">{date}</p>
-                <Link
-                  href={`/articles/${a.id}`}
-                  className="mt-1 block font-medium text-gray-900 hover:underline"
-                >
-                  {a.title}
-                </Link>
-                <div className="mt-1.5">{site && <SiteBadge site={site} />}</div>
-              </div>
-            );
-          }),
-        )}
+      <div className="mt-6">
+        <CalendarGrid byDate={byDate} sites={sites} />
       </div>
     </div>
   );
