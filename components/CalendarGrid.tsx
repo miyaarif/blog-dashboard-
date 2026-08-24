@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertIcon, CloseIcon, SearchIcon } from "@/components/icons";
 import CalendarDayPanel from "@/components/CalendarDayPanel";
 import type { Article, Site } from "@/types";
@@ -72,6 +72,7 @@ export default function CalendarGrid({
   );
 
   const query = search.trim().toLowerCase();
+  const days = monthGrid(cursor.year, cursor.month);
 
   function matchesSearch(key: string): boolean {
     if (!query) return true;
@@ -109,12 +110,19 @@ export default function CalendarGrid({
     setSearch(value);
   }
 
+  // React to typing, not just blur/Enter — a live filter that silently does
+  // nothing until you click away reads as broken.
+  useEffect(() => {
+    if (!query) return;
+    const timeout = setTimeout(() => jumpToNearestMatch(), 400);
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
   function shiftMonth(delta: number) {
     const d = new Date(Date.UTC(cursor.year, cursor.month + delta, 1));
     setCursor({ year: d.getUTCFullYear(), month: d.getUTCMonth() });
   }
-
-  const days = monthGrid(cursor.year, cursor.month);
 
   function showTooltip(e: React.MouseEvent, key: string) {
     const box = containerRef.current?.getBoundingClientRect();
