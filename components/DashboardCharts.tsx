@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   STATUS_ORDER,
   countsByStatusPerSite,
@@ -95,6 +96,7 @@ function AnimatedBar({
   onEnter,
   onMove,
   onLeave,
+  onClick,
 }: {
   d: string;
   fill: string;
@@ -104,6 +106,7 @@ function AnimatedBar({
   onEnter: (e: React.MouseEvent) => void;
   onMove: (e: React.MouseEvent) => void;
   onLeave: () => void;
+  onClick?: () => void;
 }) {
   return (
     <path
@@ -112,19 +115,21 @@ function AnimatedBar({
       onMouseEnter={onEnter}
       onMouseMove={onMove}
       onMouseLeave={onLeave}
+      onClick={onClick}
       style={{
         transformBox: "fill-box",
         transformOrigin: "bottom",
         transform: mounted ? "scaleY(1)" : "scaleY(0)",
         opacity,
         transition: `transform 0.5s cubic-bezier(0.16,1,0.3,1) ${delayMs}ms, opacity 0.15s ease-out`,
-        cursor: "pointer",
+        cursor: onClick ? "pointer" : "default",
       }}
     />
   );
 }
 
 function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Article[] }) {
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const mounted = useMountedAfterPaint();
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
@@ -245,15 +250,25 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
                         showTooltip(e, [
                           `${site.name}`,
                           `${STATUS_LABELS[status]}: ${count}`,
+                          ...(count > 0 ? ["Click to view articles"] : []),
                         ])
                       }
                       onMove={(e) =>
                         showTooltip(e, [
                           `${site.name}`,
                           `${STATUS_LABELS[status]}: ${count}`,
+                          ...(count > 0 ? ["Click to view articles"] : []),
                         ])
                       }
                       onLeave={() => setTooltip(null)}
+                      onClick={
+                        count > 0
+                          ? () =>
+                              router.push(
+                                `/articles?site=${site.id}&status=${status}`,
+                              )
+                          : undefined
+                      }
                     />
                   );
                 })}

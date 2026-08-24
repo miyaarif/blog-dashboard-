@@ -19,12 +19,16 @@ const STATUS_OPTIONS = [
 export default function ArticlesTable({
   sites,
   articles,
+  initialSiteFilter,
+  initialStatusFilter,
 }: {
   sites: Site[];
   articles: Article[];
+  initialSiteFilter?: string;
+  initialStatusFilter?: string;
 }) {
-  const [siteFilter, setSiteFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [siteFilter, setSiteFilter] = useState(initialSiteFilter ?? "all");
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter ?? "all");
   const [search, setSearch] = useState("");
 
   const filtered = articles.filter((a) => {
