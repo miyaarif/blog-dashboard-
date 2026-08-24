@@ -10,7 +10,9 @@ import { scoreArticle } from "@/lib/scoring/score";
 import { checkPublishGate } from "@/lib/scoring/publishGate";
 import { slugify, countWords } from "@/lib/newArticle";
 import CharCounter from "@/components/CharCounter";
-import { EyeIcon } from "@/components/icons";
+import { EyeIcon, SpinnerIcon } from "@/components/icons";
+
+const MIN_SAVE_SPINNER_MS = 300;
 
 const INTENT_OPTIONS = [
   "informational",
@@ -75,8 +77,15 @@ export default function ArticleEditorForm({
       slug: article.slug || slugify(article.title),
     };
     setSaving(true);
+    const startedAt = Date.now();
     try {
       const saved = await saveArticle(toSave);
+      // A save that resolves near-instantly still shows the spinner for a
+      // minimum stretch, so it reads as a deliberate state, not a flash.
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < MIN_SAVE_SPINNER_MS) {
+        await new Promise((r) => setTimeout(r, MIN_SAVE_SPINNER_MS - elapsed));
+      }
       setArticle(saved);
       setSavedMessage("Saved");
       setTimeout(() => setSavedMessage(""), 2000);
@@ -112,8 +121,9 @@ export default function ArticleEditorForm({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+            className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
+            {saving && <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />}
             {saving ? "Saving…" : "Save"}
           </button>
         </div>

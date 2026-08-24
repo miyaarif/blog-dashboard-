@@ -1,5 +1,5 @@
 function Bar({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-gray-200 ${className}`} />;
+  return <div className={`skeleton animate-pulse rounded ${className}`} />;
 }
 
 export default function EditorSkeleton() {
@@ -14,13 +14,31 @@ export default function EditorSkeleton() {
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-5">
-          {["w-16", "w-24", "w-32", "w-20", "w-28"].map((w, i) => (
+          {/* Title input */}
+          <div>
+            <Bar className="h-3 w-16" />
+            <Bar className="mt-1.5 h-8 w-full" />
+          </div>
+          {["w-24", "w-32", "w-20", "w-28"].map((w, i) => (
             <div key={i}>
               <Bar className={`h-3 ${w}`} />
               <Bar className="mt-1.5 h-8 w-full" />
             </div>
           ))}
-          <Bar className="h-40 w-full" />
+
+          {/* Body — a set of paragraph-like lines rather than one solid
+              block, matching the plain markdown textarea's real bounding
+              box while reading as text rather than a blank rectangle. */}
+          <div className="space-y-2 rounded-md border border-gray-200 p-3">
+            <Bar className="h-3 w-full" />
+            <Bar className="h-3 w-full" />
+            <Bar className="h-3 w-11/12" />
+            <Bar className="h-3 w-full" />
+            <Bar className="h-3 w-2/3" />
+            <Bar className="h-3 w-full" />
+            <Bar className="h-3 w-4/5" />
+          </div>
+
           <Bar className="h-24 w-full" />
         </div>
 

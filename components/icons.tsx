@@ -76,6 +76,27 @@ export function SearchIcon({ className }: { className?: string }) {
   );
 }
 
+export function SpinnerIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" className={className}>
+      <circle
+        cx="10"
+        cy="10"
+        r="8"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeOpacity={0.25}
+      />
+      <path
+        d="M18 10a8 8 0 0 0-8-8"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function PencilIcon({ className }: { className?: string }) {
   return (
     <svg

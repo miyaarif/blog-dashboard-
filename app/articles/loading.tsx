@@ -1,5 +1,5 @@
 function Bar({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-gray-200 ${className}`} />;
+  return <div className={`skeleton animate-pulse rounded ${className}`} />;
 }
 
 export default function Loading() {
@@ -32,9 +32,9 @@ export default function Loading() {
             className="flex items-center gap-4 border-b border-gray-100 px-4 py-3 last:border-0"
           >
             <Bar className="h-10 w-14 shrink-0" />
-            <Bar className="h-4 w-64" />
-            <Bar className="h-4 w-20" />
-            <Bar className="ml-auto h-4 w-16" />
+            <Bar className="h-4 w-3/5" />
+            <Bar className="h-4 w-20 rounded-full" />
+            <Bar className="ml-auto h-4 w-16 rounded-full" />
           </div>
         ))}
       </div>
@@ -44,8 +44,11 @@ export default function Loading() {
           <div key={i} className="flex gap-3 p-4">
             <Bar className="h-14 w-20 shrink-0" />
             <div className="flex-1">
-              <Bar className="h-4 w-40" />
-              <Bar className="mt-2 h-4 w-24" />
+              <Bar className="h-4 w-3/5" />
+              <div className="mt-2 flex gap-2">
+                <Bar className="h-4 w-16 rounded-full" />
+                <Bar className="h-4 w-14 rounded-full" />
+              </div>
             </div>
           </div>
         ))}
