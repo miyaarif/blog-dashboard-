@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useMemo, useRef, useState } from "react";
+import { AlertIcon, CloseIcon, SearchIcon } from "@/components/icons";
+import CalendarDayPanel from "@/components/CalendarDayPanel";
 import type { Article, Site } from "@/types";
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -10,12 +11,23 @@ const MONTH_LABELS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-// Sequential one-hue ramp (dataviz skill, references/palette.md), steps
-// spaced widely enough to stay visually distinct at this small badge size.
+// Sequential one-hue ramp (dataviz skill, references/palette.md), validated
+// with --ordinal — these are the small count-badge colors, kept as-is.
 function countColor(count: number): string {
   if (count >= 3) return "#104281";
   if (count === 2) return "#256abf";
   return "#5598e7";
+}
+
+// Light cell-background wash derived from the same badge hue, so the badge
+// stays the one loud element per cell instead of a fully saturated tile.
+function countTint(count: number): string {
+  const alpha = count >= 3 ? 0.16 : count === 2 ? 0.1 : 0.06;
+  const hex = countColor(count);
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 
 function dateKey(year: number, month: number, day: number): string {
@@ -30,6 +42,12 @@ function monthGrid(year: number, month: number): Date[] {
   );
 }
 
+interface HoverState {
+  key: string;
+  x: number;
+  y: number;
+}
+
 export default function CalendarGrid({
   byDate,
   sites,
@@ -37,18 +55,60 @@ export default function CalendarGrid({
   byDate: Record<string, Article[]>;
   sites: Site[];
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const sitesById = useMemo(() => new Map(sites.map((s) => [s.id, s])), [sites]);
   const today = useMemo(() => new Date(), []);
   const [cursor, setCursor] = useState(() => ({
     year: today.getUTCFullYear(),
     month: today.getUTCMonth(),
   }));
+  const [hover, setHover] = useState<HoverState | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
   const todayKey = dateKey(
     today.getUTCFullYear(),
     today.getUTCMonth(),
     today.getUTCDate(),
   );
+
+  const query = search.trim().toLowerCase();
+
+  function matchesSearch(key: string): boolean {
+    if (!query) return true;
+    const items = byDate[key];
+    if (!items) return false;
+    return items.some((a) => a.title.toLowerCase().includes(query));
+  }
+
+  function jumpToNearestMatch() {
+    if (!query) return;
+    const matchMonths = new Set<string>();
+    for (const [key, items] of Object.entries(byDate)) {
+      if (items.some((a) => a.title.toLowerCase().includes(query))) {
+        const d = new Date(key + "T00:00:00Z");
+        matchMonths.add(`${d.getUTCFullYear()}-${d.getUTCMonth()}`);
+      }
+    }
+    if (matchMonths.size === 0) return;
+
+    const currentInMonth = days.some(
+      (d) => d.getUTCMonth() === cursor.month && matchesSearch(d.toISOString().slice(0, 10)),
+    );
+    if (currentInMonth) return;
+
+    let best: { year: number; month: number; dist: number } | null = null;
+    for (const key of matchMonths) {
+      const [y, m] = key.split("-").map(Number);
+      const dist = Math.abs((y - cursor.year) * 12 + (m - cursor.month));
+      if (!best || dist < best.dist) best = { year: y, month: m, dist };
+    }
+    if (best) setCursor({ year: best.year, month: best.month });
+  }
+
+  function handleSearchChange(value: string) {
+    setSearch(value);
+  }
 
   function shiftMonth(delta: number) {
     const d = new Date(Date.UTC(cursor.year, cursor.month + delta, 1));
@@ -57,103 +117,154 @@ export default function CalendarGrid({
 
   const days = monthGrid(cursor.year, cursor.month);
 
+  function showTooltip(e: React.MouseEvent, key: string) {
+    const box = containerRef.current?.getBoundingClientRect();
+    if (!box) return;
+    setHover({ key, x: e.clientX - box.left, y: e.clientY - box.top });
+  }
+
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <div className="flex items-center justify-between">
+    <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-semibold text-gray-900">
           {MONTH_LABELS[cursor.month]} {cursor.year}
         </p>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() =>
-              setCursor({ year: today.getUTCFullYear(), month: today.getUTCMonth() })
-            }
-            className="rounded-md px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-          >
-            Today
-          </button>
-          <button
-            onClick={() => shiftMonth(-1)}
-            aria-label="Previous month"
-            className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-          >
-            ←
-          </button>
-          <button
-            onClick={() => shiftMonth(1)}
-            aria-label="Next month"
-            className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-          >
-            →
-          </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative">
+            <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <input
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && jumpToNearestMatch()}
+              onBlur={jumpToNearestMatch}
+              placeholder="Search titles…"
+              className="w-full rounded-md border border-gray-300 py-1.5 pl-8 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-400 focus:outline-none sm:w-48"
+            />
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() =>
+                setCursor({ year: today.getUTCFullYear(), month: today.getUTCMonth() })
+              }
+              className="rounded-md px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            >
+              Today
+            </button>
+            <button
+              onClick={() => shiftMonth(-1)}
+              aria-label="Previous month"
+              className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            >
+              ←
+            </button>
+            <button
+              onClick={() => shiftMonth(1)}
+              aria-label="Next month"
+              className="rounded-md px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            >
+              →
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-7 gap-1">
-        {DAY_LABELS.map((d) => (
-          <div
-            key={d}
-            className="pb-1 text-center text-[11px] font-medium uppercase tracking-wide text-gray-400"
-          >
-            {d}
-          </div>
-        ))}
-
-        {days.map((date) => {
-          const key = date.toISOString().slice(0, 10);
-          const inMonth = date.getUTCMonth() === cursor.month;
-          const items = byDate[key] ?? [];
-          const isToday = key === todayKey;
-
-          const tooltip =
-            items.length > 0
-              ? items
-                  .map((a) => {
-                    const site = sitesById.get(a.site_id);
-                    return `${site ? site.name + ": " : ""}${a.title}`;
-                  })
-                  .join("\n")
-              : undefined;
-
-          const cell = (
-            <div
-              className={`flex aspect-square flex-col items-center justify-start gap-1 rounded-md p-1 ${
-                isToday ? "bg-gray-50 ring-1 ring-inset ring-gray-300" : ""
-              }`}
-              title={tooltip}
-            >
-              <span
-                className={`text-xs ${
-                  inMonth ? "text-gray-700" : "text-gray-300"
-                } ${isToday ? "font-semibold text-gray-900" : ""}`}
+      <div ref={containerRef} className="relative mt-4">
+        {hover &&
+          (() => {
+            const items = byDate[hover.key] ?? [];
+            if (items.length === 0) return null;
+            return (
+              <div
+                className="pointer-events-auto absolute z-10 w-64 -translate-x-1/2 -translate-y-full rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
+                style={{ left: hover.x, top: hover.y - 10 }}
               >
-                {date.getUTCDate()}
-              </span>
-              {items.length > 0 && (
-                <span
-                  className="flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-medium text-white"
-                  style={{ backgroundColor: countColor(items.length) }}
-                >
-                  {items.length}
-                </span>
-              )}
-            </div>
-          );
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-500">
+                    {items.length} {items.length === 1 ? "article" : "articles"}
+                  </p>
+                  <button
+                    onClick={() => setHover(null)}
+                    aria-label="Close"
+                    className="text-gray-300 hover:text-gray-600"
+                  >
+                    <CloseIcon className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <ul className="mt-1.5 space-y-1">
+                  {items.map((a, i) => {
+                    const site = sitesById.get(a.site_id);
+                    return (
+                      <li key={a.id} className="truncate text-xs text-gray-700">
+                        {i + 1}. {site ? `${site.name}: ` : ""}
+                        {a.title}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            );
+          })()}
 
-          // A single article that day links straight to it; multiple
-          // articles rely on the hover tooltip (a link can only go one place).
-          return (
-            <div key={key}>
-              {items.length === 1 ? (
-                <Link href={`/articles/${items[0].id}`} className="block hover:bg-gray-50 rounded-md">
-                  {cell}
-                </Link>
-              ) : (
-                cell
-              )}
+        <div className="grid grid-cols-7 gap-1">
+          {DAY_LABELS.map((d) => (
+            <div
+              key={d}
+              className="pb-1 text-center text-[11px] font-medium uppercase tracking-wide text-gray-400"
+            >
+              {d}
             </div>
-          );
-        })}
+          ))}
+
+          {days.map((date) => {
+            const key = date.toISOString().slice(0, 10);
+            const inMonth = date.getUTCMonth() === cursor.month;
+            const items = byDate[key] ?? [];
+            const count = items.length;
+            const isToday = key === todayKey;
+            const isSelected = key === selectedDate;
+            const dimmed = query !== "" && !matchesSearch(key);
+
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setSelectedDate(key)}
+                onMouseEnter={(e) => count > 0 && showTooltip(e, key)}
+                onMouseMove={(e) => count > 0 && showTooltip(e, key)}
+                onMouseLeave={() => setHover(null)}
+                className={`relative flex aspect-square flex-col items-start rounded-md border p-1 text-left transition-all ${
+                  isSelected
+                    ? "border-blue-500 ring-2 ring-blue-200"
+                    : isToday
+                      ? "border-gray-300"
+                      : "border-transparent hover:border-gray-200"
+                } ${dimmed ? "opacity-30" : ""}`}
+                style={{
+                  backgroundColor: count > 0 ? countTint(count) : undefined,
+                }}
+              >
+                <span
+                  className={`text-xs ${
+                    inMonth ? "text-gray-700" : "text-gray-300"
+                  } ${isToday ? "font-semibold text-gray-900" : ""}`}
+                >
+                  {date.getUTCDate()}
+                </span>
+                {count > 0 && (
+                  <span className="flex flex-1 w-full items-center justify-center">
+                    <span
+                      className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium text-white"
+                      style={{ backgroundColor: countColor(count) }}
+                    >
+                      {count >= 3 && <AlertIcon className="h-2.5 w-2.5" />}
+                      {count}
+                    </span>
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-gray-500">
@@ -173,12 +284,21 @@ export default function CalendarGrid({
         </span>
         <span className="flex items-center gap-1.5">
           <span
-            className="inline-block h-3 w-3 rounded-full"
+            className="flex h-3 items-center gap-0.5 rounded-full px-1 text-white"
             style={{ backgroundColor: countColor(3) }}
-          />
+          >
+            <AlertIcon className="h-2 w-2" />
+          </span>
           3+ articles (collision)
         </span>
       </div>
+
+      <CalendarDayPanel
+        date={selectedDate}
+        articles={selectedDate ? byDate[selectedDate] ?? [] : []}
+        sites={sites}
+        onClose={() => setSelectedDate(null)}
+      />
     </div>
   );
 }

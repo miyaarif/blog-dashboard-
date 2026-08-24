@@ -13,7 +13,10 @@ export function countWords(markdown: string): number {
   return trimmed ? trimmed.split(/\s+/).length : 0;
 }
 
-export function createBlankArticle(siteId: string): Article {
+export function createBlankArticle(
+  siteId: string,
+  scheduledFor: string | null = null,
+): Article {
   return {
     id: `art_new_${Date.now().toString(36)}`,
     site_id: siteId,
@@ -35,7 +38,7 @@ export function createBlankArticle(siteId: string): Article {
     affiliate_disclosure: null,
     last_updated: new Date().toISOString().split("T")[0],
     internal_links: [],
-    scheduled_for: null,
+    scheduled_for: scheduledFor,
     published_at: null,
     organic_sessions_30d: 0,
     avg_position: null,

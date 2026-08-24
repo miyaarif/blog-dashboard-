@@ -38,7 +38,7 @@ export interface WeeklyPublishCount {
   count: number;
 }
 
-function mondayOf(date: Date): Date {
+export function mondayOf(date: Date): Date {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   const day = d.getUTCDay(); // 0 = Sunday
   const diff = day === 0 ? -6 : 1 - day;

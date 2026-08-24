@@ -4,9 +4,14 @@ import NewArticleForm from "@/components/NewArticleForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function NewArticlePage() {
+export default async function NewArticlePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>;
+}) {
   const [sites, allArticles] = await Promise.all([getSites(), getArticles()]);
-  const blank = createBlankArticle(sites[0].id);
+  const { date } = await searchParams;
+  const blank = createBlankArticle(sites[0].id, date ?? null);
 
   return (
     <NewArticleForm initialArticle={blank} sites={sites} allArticles={allArticles} />
