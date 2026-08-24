@@ -19,15 +19,14 @@ function countColor(count: number): string {
   return "#5598e7";
 }
 
-// Light cell-background wash derived from the same badge hue, so the badge
-// stays the one loud element per cell instead of a fully saturated tile.
-function countTint(count: number): string {
-  const alpha = count >= 3 ? 0.16 : count === 2 ? 0.1 : 0.06;
-  const hex = countColor(count);
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
+// Cell background: light/medium blue washes for 1-2 articles, and the full
+// saturated dark navy for 3+ (a collision) — the "!" badge on that dark
+// background is the explicit non-color-alone indicator.
+function cellBackground(count: number): string | undefined {
+  if (count >= 3) return countColor(3);
+  if (count === 2) return "rgba(37,106,191,0.18)";
+  if (count === 1) return "rgba(85,152,231,0.12)";
+  return undefined;
 }
 
 function dateKey(year: number, month: number, day: number): string {
@@ -146,7 +145,7 @@ export default function CalendarGrid({
               onClick={() =>
                 setCursor({ year: today.getUTCFullYear(), month: today.getUTCMonth() })
               }
-              className="rounded-md px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+              className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-blue-700"
             >
               Today
             </button>
@@ -223,6 +222,7 @@ export default function CalendarGrid({
             const isToday = key === todayKey;
             const isSelected = key === selectedDate;
             const dimmed = query !== "" && !matchesSearch(key);
+            const isDark = count >= 3;
 
             return (
               <button
@@ -234,19 +234,21 @@ export default function CalendarGrid({
                 onMouseLeave={() => setHover(null)}
                 className={`relative flex aspect-square flex-col items-start rounded-md border p-1 text-left transition-all ${
                   isSelected
-                    ? "border-blue-500 ring-2 ring-blue-200"
+                    ? "border-blue-500 shadow-[0_0_0_3px_rgba(37,99,235,0.25)]"
                     : isToday
-                      ? "border-gray-300"
-                      : "border-transparent hover:border-gray-200"
+                      ? "border-blue-300"
+                      : "border-gray-100 hover:border-gray-200"
                 } ${dimmed ? "opacity-30" : ""}`}
-                style={{
-                  backgroundColor: count > 0 ? countTint(count) : undefined,
-                }}
+                style={{ backgroundColor: cellBackground(count) }}
               >
                 <span
                   className={`text-xs ${
-                    inMonth ? "text-gray-700" : "text-gray-300"
-                  } ${isToday ? "font-semibold text-gray-900" : ""}`}
+                    isDark
+                      ? "font-semibold text-white"
+                      : inMonth
+                        ? "text-gray-700"
+                        : "text-gray-300"
+                  } ${isToday && !isDark ? "font-semibold text-blue-700" : ""}`}
                 >
                   {date.getUTCDate()}
                 </span>
@@ -254,9 +256,11 @@ export default function CalendarGrid({
                   <span className="flex flex-1 w-full items-center justify-center">
                     <span
                       className="flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium text-white"
-                      style={{ backgroundColor: countColor(count) }}
+                      style={{
+                        backgroundColor: isDark ? "rgba(255,255,255,0.2)" : countColor(count),
+                      }}
                     >
-                      {count >= 3 && <AlertIcon className="h-2.5 w-2.5" />}
+                      {isDark && <AlertIcon className="h-2.5 w-2.5" />}
                       {count}
                     </span>
                   </span>
