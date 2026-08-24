@@ -11,10 +11,11 @@ export default async function ArticlesPage({
     status?: string;
     from?: string;
     to?: string;
+    search?: string;
   }>;
 }) {
   const [sites, articles] = await Promise.all([getSites(), getArticles()]);
-  const { site, status, from, to } = await searchParams;
+  const { site, status, from, to, search } = await searchParams;
 
   return (
     <ArticlesTable
@@ -24,6 +25,7 @@ export default async function ArticlesPage({
       initialStatusFilter={status}
       initialFrom={from}
       initialTo={to}
+      initialSearch={search}
     />
   );
 }

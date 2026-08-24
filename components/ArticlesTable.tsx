@@ -31,6 +31,7 @@ export default function ArticlesTable({
   initialStatusFilter,
   initialFrom,
   initialTo,
+  initialSearch,
 }: {
   sites: Site[];
   articles: Article[];
@@ -38,10 +39,11 @@ export default function ArticlesTable({
   initialStatusFilter?: string;
   initialFrom?: string;
   initialTo?: string;
+  initialSearch?: string;
 }) {
   const [siteFilter, setSiteFilter] = useState(initialSiteFilter ?? "all");
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter ?? "all");
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch ?? "");
   const [dateRange, setDateRange] = useState(
     initialFrom && initialTo ? { from: initialFrom, to: initialTo } : null,
   );
