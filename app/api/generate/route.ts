@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { slugify } from "@/lib/newArticle";
 
 // ------------------------------------------------------------
@@ -153,7 +154,7 @@ function daysSince(dateString: string | null): number | null {
 // articles.id has no DB default. Existing rows are a flat sequence
 // art_0001, art_0002, ... shared across all sites.
 // ------------------------------------------------------------
-async function nextArticleId(): Promise<string> {
+async function nextArticleId(supabaseAdmin: SupabaseClient): Promise<string> {
   const { data, error } = await supabaseAdmin
     .from("articles")
     .select("id")
@@ -181,13 +182,14 @@ interface NewArticleInput {
 // Retries on a duplicate id (rare race between two requests) and on a
 // duplicate slug (two titles that slugify the same way).
 async function insertArticleWithRetry(
+  supabaseAdmin: SupabaseClient,
   input: NewArticleInput,
   maxAttempts = 5,
 ): Promise<{ id: string }> {
   let slug = input.slug;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const id = await nextArticleId();
+    const id = await nextArticleId(supabaseAdmin);
 
     const { data, error } = await supabaseAdmin
       .from("articles")
@@ -238,6 +240,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const providedSecret = request.headers.get("x-pipeline-secret");
   if (!providedSecret || providedSecret !== expectedSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  let supabaseAdmin: SupabaseClient;
+  try {
+    supabaseAdmin = getSupabaseAdmin();
+  } catch {
+    return NextResponse.json(
+      { error: "Server misconfigured: Supabase admin client is not configured" },
+      { status: 500 },
+    );
   }
 
   let rawBody: unknown;
@@ -405,7 +417,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // ---- create the article row ----
   let article: { id: string };
   try {
-    article = await insertArticleWithRetry({
+    article = await insertArticleWithRetry(supabaseAdmin, {
       site_id: siteRow.id,
       title: input.title,
       target_keyword: input.target_keyword,
