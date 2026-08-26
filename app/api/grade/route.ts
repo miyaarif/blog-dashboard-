@@ -86,7 +86,10 @@ function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
-function validateBody(body: unknown): { error: string | null; value: GradeRequestBody | null } {
+function validateBody(body: unknown): {
+  error: string | null;
+  value: GradeRequestBody | null;
+} {
   if (typeof body !== "object" || body === null) {
     return { error: "Request body must be a JSON object", value: null };
   }
@@ -144,14 +147,23 @@ function formatBrandFacts(brands: BrandRow[]): string {
 
 function formatRubricText(criteria: RubricCriterion[]): string {
   return criteria
-    .map((c) => `${c.name} (weight ${c.weight}): 1 = ${c.scale_1} | 5 = ${c.scale_5}`)
+    .map(
+      (c) =>
+        `${c.name} (weight ${c.weight}): 1 = ${c.scale_1} | 5 = ${c.scale_5}`,
+    )
     .join("\n");
 }
 
-function fillTemplate(template: string, values: Record<string, string>): string {
-  return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (match, key: string) => {
-    return key in values ? values[key] : match;
-  });
+function fillTemplate(
+  template: string,
+  values: Record<string, string>,
+): string {
+  return template.replace(
+    /{{\s*([a-zA-Z0-9_]+)\s*}}/g,
+    (match, key: string) => {
+      return key in values ? values[key] : match;
+    },
+  );
 }
 
 // ------------------------------------------------------------
@@ -159,6 +171,11 @@ function fillTemplate(template: string, values: Record<string, string>): string 
 // ------------------------------------------------------------
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 const DEEPSEEK_TIMEOUT_MS = 120_000;
+// A full grade (scores + one issue per weak criterion) needs ~3000 tokens
+// of final JSON. deepseek-reasoner spends part of this same budget on
+// reasoning_content before it ever writes the answer, so the ceiling has
+// to cover reasoning + the final JSON, not just the JSON alone.
+const GRADER_MAX_TOKENS = 8000;
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -168,6 +185,10 @@ interface ChatMessage {
 interface DeepSeekSuccess {
   ok: true;
   content: string;
+  reasoningContent: string | undefined;
+  finishReason: string | undefined;
+  usage: { prompt_tokens: number; completion_tokens: number };
+  raw: unknown;
   inputTokens: number;
   outputTokens: number;
 }
@@ -198,8 +219,9 @@ async function callDeepSeek(
       body: JSON.stringify({
         model,
         messages,
-        max_tokens: 4000,
+        max_tokens: GRADER_MAX_TOKENS,
         temperature: 0.7,
+        response_format: { type: "json_object" },
       }),
       signal: controller.signal,
     });
@@ -210,13 +232,20 @@ async function callDeepSeek(
     }
 
     const data = (await res.json()) as {
-      choices: { message: { content: string } }[];
+      choices: {
+        message: { content: string; reasoning_content?: string };
+        finish_reason?: string;
+      }[];
       usage: { prompt_tokens: number; completion_tokens: number };
     };
 
     return {
       ok: true,
       content: data.choices[0].message.content,
+      reasoningContent: data.choices[0].message.reasoning_content,
+      finishReason: data.choices[0].finish_reason,
+      usage: data.usage,
+      raw: data,
       inputTokens: data.usage.prompt_tokens,
       outputTokens: data.usage.completion_tokens,
     };
@@ -259,7 +288,10 @@ function isIssue(value: unknown): value is Issue {
 
 // Requires every rubric criterion to be present in scores (step 8) as
 // part of the same shape check the writer uses for its own JSON.
-function isGraderOutput(value: unknown, requiredCriteria: string[]): value is GraderOutput {
+function isGraderOutput(
+  value: unknown,
+  requiredCriteria: string[],
+): value is GraderOutput {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
 
@@ -271,7 +303,8 @@ function isGraderOutput(value: unknown, requiredCriteria: string[]): value is Gr
 
   if (typeof v.weighted_total !== "number") return false;
   if (typeof v.passed !== "boolean") return false;
-  if (v.hard_fail_reason !== null && typeof v.hard_fail_reason !== "string") return false;
+  if (v.hard_fail_reason !== null && typeof v.hard_fail_reason !== "string")
+    return false;
   if (!Array.isArray(v.issues) || !v.issues.every(isIssue)) return false;
   if (typeof v.verdict_summary !== "string") return false;
 
@@ -288,7 +321,11 @@ function extractJsonObject(raw: string): string | null {
   return withoutFences.slice(start, end + 1);
 }
 
-function parseGraderOutput(raw: string, requiredCriteria: string[]): GraderOutput | null {
+function parseGraderOutput(
+  raw: string | undefined,
+  requiredCriteria: string[],
+): GraderOutput | null {
+  if (!raw) return null;
   const jsonText = extractJsonObject(raw);
   if (!jsonText) return null;
 
@@ -302,9 +339,62 @@ function parseGraderOutput(raw: string, requiredCriteria: string[]): GraderOutpu
   return isGraderOutput(parsed, requiredCriteria) ? parsed : null;
 }
 
-function recomputeWeightedTotal(scores: Record<string, number>, criteria: RubricCriterion[]): number {
-  const total = criteria.reduce((sum, c) => sum + (scores[c.name] / 5) * c.weight, 0);
+// deepseek-reasoner sometimes leaves `content` empty and puts everything —
+// including, at times, the final answer — in reasoning_content instead.
+// Try the normal field first, then fall back to reasoning_content.
+function resolveGraderOutput(
+  result: DeepSeekSuccess,
+  requiredCriteria: string[],
+): GraderOutput | null {
+  return (
+    parseGraderOutput(result.content, requiredCriteria) ??
+    parseGraderOutput(result.reasoningContent, requiredCriteria)
+  );
+}
+
+// Never log the draft body — this logs the grader's own reply, not the
+// draft it was reviewing. finish_reason=="length" means it ran out of
+// max_tokens, which for a reasoning model can happen mid-thought, before
+// it ever writes `content`.
+function logParseFailure(attemptNumber: number, result: DeepSeekSuccess): void {
+  console.warn(
+    `grader parse failure (attempt ${attemptNumber}): finish_reason=${result.finishReason ?? "unknown"} ` +
+      `content_length=${result.content?.length ?? 0} reasoning_content_length=${result.reasoningContent?.length ?? 0} ` +
+      `usage=${JSON.stringify(result.usage)}`,
+  );
+  console.warn(
+    `grader full response (attempt ${attemptNumber}): ${JSON.stringify(result.raw)}`,
+  );
+}
+
+function recomputeWeightedTotal(
+  scores: Record<string, number>,
+  criteria: RubricCriterion[],
+): number {
+  const total = criteria.reduce(
+    (sum, c) => sum + (scores[c.name] / 5) * c.weight,
+    0,
+  );
   return Math.round(total);
+}
+
+// Server-side floor: if any rubric criterion scored 2 or below, this is an
+// automatic hard fail regardless of the weighted total or what the model
+// itself decided to put in hard_fail_reason. This is pure arithmetic on
+// scores we already have — it must not depend on the model remembering to
+// apply the rule from the prompt text, same reasoning as why we recompute
+// weighted_total instead of trusting the model's math.
+function findLowScoreCriterion(
+  scores: Record<string, number>,
+  criteria: RubricCriterion[],
+): RubricCriterion | null {
+  for (const c of criteria) {
+    const score = scores[c.name];
+    if (typeof score === "number" && score <= 2) {
+      return c;
+    }
+  }
+  return null;
 }
 
 // ------------------------------------------------------------
@@ -337,7 +427,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     supabaseAdmin = getSupabaseAdmin();
   } catch {
     return NextResponse.json(
-      { error: "Server misconfigured: Supabase admin client is not configured" },
+      {
+        error: "Server misconfigured: Supabase admin client is not configured",
+      },
       { status: 500 },
     );
   }
@@ -362,7 +454,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .maybeSingle();
 
   if (existingGradeError) {
-    return NextResponse.json({ error: "Could not check for an existing grade" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not check for an existing grade" },
+      { status: 500 },
+    );
   }
   if (existingGrade) {
     return NextResponse.json(
@@ -379,7 +474,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .maybeSingle();
 
   if (draftError) {
-    return NextResponse.json({ error: "Could not load draft" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not load draft" },
+      { status: 500 },
+    );
   }
   if (!draft) {
     return NextResponse.json({ error: "Unknown draft_id" }, { status: 404 });
@@ -393,10 +491,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .maybeSingle();
 
   if (articleError) {
-    return NextResponse.json({ error: "Could not load article" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not load article" },
+      { status: 500 },
+    );
   }
   if (!article) {
-    return NextResponse.json({ error: "Draft's article no longer exists" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Draft's article no longer exists" },
+      { status: 404 },
+    );
   }
   const articleRow = article as ArticleRow;
 
@@ -410,7 +514,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Could not load site" }, { status: 500 });
   }
   if (!site) {
-    return NextResponse.json({ error: "Article's site no longer exists" }, { status: 404 });
+    return NextResponse.json(
+      { error: "Article's site no longer exists" },
+      { status: 404 },
+    );
   }
   const siteRow = site as SiteRow;
 
@@ -423,7 +530,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .maybeSingle();
 
   if (profileError) {
-    return NextResponse.json({ error: "Could not load brand profile" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not load brand profile" },
+      { status: 500 },
+    );
   }
   if (!brandProfile) {
     return NextResponse.json(
@@ -440,7 +550,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .order("position", { ascending: true });
 
   if (joinError) {
-    return NextResponse.json({ error: "Could not load article_brands" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not load article_brands" },
+      { status: 500 },
+    );
   }
 
   const brandIds = (joinRows ?? []).map((row) => row.brand_id as string);
@@ -448,11 +561,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (brandIds.length > 0) {
     const { data: brandRows, error: brandsError } = await supabaseAdmin
       .from("brands")
-      .select("id,name,what_they_are,strengths,weaknesses,eligibility,product_range,rate_note")
+      .select(
+        "id,name,what_they_are,strengths,weaknesses,eligibility,product_range,rate_note",
+      )
       .in("id", brandIds);
 
     if (brandsError) {
-      return NextResponse.json({ error: "Could not load brands" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Could not load brands" },
+        { status: 500 },
+      );
     }
     brands = (brandRows ?? []) as BrandRow[];
   }
@@ -466,51 +584,66 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .maybeSingle();
 
   if (rubricError) {
-    return NextResponse.json({ error: "Could not load rubric" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not load rubric" },
+      { status: 500 },
+    );
   }
   if (!rubric) {
     return NextResponse.json(
-      { error: `no active rubric for content_profile '${siteRow.content_profile}'` },
+      {
+        error: `no active rubric for content_profile '${siteRow.content_profile}'`,
+      },
       { status: 400 },
     );
   }
   const rubricRow = rubric as RubricRow;
 
   // ---- active grader prompt, site-specific first, generic fallback ----
-  const { data: specificPrompt, error: specificPromptError } = await supabaseAdmin
-    .from("prompts")
-    .select("id,body,model")
-    .eq("role", "grader")
-    .is("variant", null)
-    .eq("content_profile", siteRow.content_profile)
-    .eq("active", true)
-    .maybeSingle();
+  const { data: specificPrompt, error: specificPromptError } =
+    await supabaseAdmin
+      .from("prompts")
+      .select("id,body,model")
+      .eq("role", "grader")
+      .is("variant", null)
+      .eq("content_profile", siteRow.content_profile)
+      .eq("active", true)
+      .maybeSingle();
 
   if (specificPromptError) {
-    return NextResponse.json({ error: "Could not load grader prompt" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not load grader prompt" },
+      { status: 500 },
+    );
   }
 
   let prompt = specificPrompt as PromptRow | null;
 
   if (!prompt) {
-    const { data: genericPrompt, error: genericPromptError } = await supabaseAdmin
-      .from("prompts")
-      .select("id,body,model")
-      .eq("role", "grader")
-      .is("variant", null)
-      .is("content_profile", null)
-      .eq("active", true)
-      .maybeSingle();
+    const { data: genericPrompt, error: genericPromptError } =
+      await supabaseAdmin
+        .from("prompts")
+        .select("id,body,model")
+        .eq("role", "grader")
+        .is("variant", null)
+        .is("content_profile", null)
+        .eq("active", true)
+        .maybeSingle();
 
     if (genericPromptError) {
-      return NextResponse.json({ error: "Could not load grader prompt" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Could not load grader prompt" },
+        { status: 500 },
+      );
     }
     prompt = genericPrompt as PromptRow | null;
   }
 
   if (!prompt) {
     return NextResponse.json(
-      { error: `no active grader prompt for content_profile '${siteRow.content_profile}'` },
+      {
+        error: `no active grader prompt for content_profile '${siteRow.content_profile}'`,
+      },
       { status: 400 },
     );
   }
@@ -551,21 +684,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   let inputTokens = attempt.inputTokens;
   let outputTokens = attempt.outputTokens;
-  let rawText = attempt.content;
-  let graderOutput = parseGraderOutput(rawText, requiredCriteria);
+  let graderOutput = resolveGraderOutput(attempt, requiredCriteria);
 
   if (!graderOutput) {
-    messages.push({ role: "assistant", content: rawText });
+    logParseFailure(1, attempt);
+    messages.push({
+      role: "assistant",
+      content: attempt.content || attempt.reasoningContent || "",
+    });
     messages.push({
       role: "user",
-      content: "Your last response was not valid JSON. Return only the JSON object.",
+      content:
+        "Your last response was not valid JSON. Return only the JSON object.",
     });
 
     let retry: DeepSeekResult;
     try {
       retry = await callDeepSeek(deepseekApiKey, prompt.model, messages);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "DeepSeek call failed";
+      const message =
+        err instanceof Error ? err.message : "DeepSeek call failed";
       return NextResponse.json({ error: message }, { status: 502 });
     }
 
@@ -578,27 +716,57 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     inputTokens += retry.inputTokens;
     outputTokens += retry.outputTokens;
-    rawText = retry.content;
-    graderOutput = parseGraderOutput(rawText, requiredCriteria);
+    graderOutput = resolveGraderOutput(retry, requiredCriteria);
+
+    if (!graderOutput) {
+      logParseFailure(2, retry);
+    }
   }
 
   if (!graderOutput) {
     // No equivalent of the writer's "keep the raw text" fallback here —
     // a grade row without real scores isn't useful. Create nothing.
     return NextResponse.json(
-      { error: "DeepSeek grader did not return valid, complete JSON after one retry" },
+      {
+        error:
+          "DeepSeek grader did not return valid, complete JSON after one retry",
+      },
       { status: 502 },
     );
   }
 
-  // ---- recompute weighted_total and passed ourselves; don't trust the model's math ----
-  const recomputedTotal = recomputeWeightedTotal(graderOutput.scores, rubricRow.criteria);
+  // ---- recompute weighted_total ourselves; don't trust the model's math ----
+  const recomputedTotal = recomputeWeightedTotal(
+    graderOutput.scores,
+    rubricRow.criteria,
+  );
   if (recomputedTotal !== graderOutput.weighted_total) {
     console.warn(
       `grade mismatch for draft ${draftRow.id}: model said ${graderOutput.weighted_total}, recomputed ${recomputedTotal}`,
     );
   }
-  const passed = recomputedTotal >= rubricRow.pass_threshold && !graderOutput.hard_fail_reason;
+
+  // ---- server-side auto-fail floor: any criterion scoring <=2 is a hard ----
+  // fail regardless of what the model itself decided. Falls back to the
+  // model's own hard_fail_reason if it set one and no criterion is <=2.
+  const lowScoreCriterion = findLowScoreCriterion(
+    graderOutput.scores,
+    rubricRow.criteria,
+  );
+  const hardFailReason =
+    graderOutput.hard_fail_reason ??
+    (lowScoreCriterion
+      ? `auto-fail: ${lowScoreCriterion.name} scored ${graderOutput.scores[lowScoreCriterion.name]}/5`
+      : null);
+
+  if (lowScoreCriterion && !graderOutput.hard_fail_reason) {
+    console.warn(
+      `grade auto-fail for draft ${draftRow.id}: ${lowScoreCriterion.name} scored ` +
+        `${graderOutput.scores[lowScoreCriterion.name]}/5, model did not set hard_fail_reason itself`,
+    );
+  }
+
+  const passed = recomputedTotal >= rubricRow.pass_threshold && !hardFailReason;
 
   const { data: insertedGrade, error: insertError } = await supabaseAdmin
     .from("grades")
@@ -607,7 +775,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       scores: graderOutput.scores,
       weighted_total: recomputedTotal,
       passed,
-      hard_fail_reason: graderOutput.hard_fail_reason,
+      hard_fail_reason: hardFailReason,
       issues: graderOutput.issues,
       verdict_summary: graderOutput.verdict_summary,
       rubric_id: rubricRow.id,
@@ -622,7 +790,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (insertError) {
     if (insertError.code === "23505") {
-      return NextResponse.json({ error: "Draft already graded" }, { status: 409 });
+      return NextResponse.json(
+        { error: "Draft already graded" },
+        { status: 409 },
+      );
     }
     return NextResponse.json(
       { error: `Could not save grade: ${insertError.message}` },
