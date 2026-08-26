@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
-import { slugify } from "@/lib/newArticle";
+import { slugify, countWords } from "@/lib/newArticle";
 
 // ------------------------------------------------------------
 // Input shape
@@ -61,6 +61,7 @@ interface BrandRow {
 interface PromptRow {
   id: string;
   body: string;
+  model: string;
 }
 
 const STALE_AFTER_DAYS = 90;
@@ -150,6 +151,126 @@ function daysSince(dateString: string | null): number | null {
 }
 
 // ------------------------------------------------------------
+// DeepSeek — OpenAI-compatible chat completions
+// ------------------------------------------------------------
+const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
+const DEEPSEEK_TIMEOUT_MS = 120_000;
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface DeepSeekSuccess {
+  ok: true;
+  content: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+interface DeepSeekFailure {
+  ok: false;
+  status: number;
+  detail: unknown;
+}
+
+type DeepSeekResult = DeepSeekSuccess | DeepSeekFailure;
+
+async function callDeepSeek(
+  apiKey: string,
+  model: string,
+  messages: ChatMessage[],
+): Promise<DeepSeekResult> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), DEEPSEEK_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(DEEPSEEK_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        max_tokens: 4000,
+        temperature: 0.7,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const detail = await res.json().catch(() => null);
+      return { ok: false, status: res.status, detail };
+    }
+
+    const data = (await res.json()) as {
+      choices: { message: { content: string } }[];
+      usage: { prompt_tokens: number; completion_tokens: number };
+    };
+
+    return {
+      ok: true,
+      content: data.choices[0].message.content,
+      inputTokens: data.usage.prompt_tokens,
+      outputTokens: data.usage.completion_tokens,
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// ------------------------------------------------------------
+// Writer output — the JSON the writer prompt asks DeepSeek for
+// ------------------------------------------------------------
+interface WriterOutput {
+  body_markdown: string;
+  meta_description: string;
+  slug: string;
+  hero_image_alt: string;
+  sources: string[];
+  internal_links: string[];
+}
+
+function isWriterOutput(value: unknown): value is WriterOutput {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.body_markdown === "string" &&
+    typeof v.meta_description === "string" &&
+    typeof v.slug === "string" &&
+    typeof v.hero_image_alt === "string" &&
+    isStringArray(v.sources) &&
+    isStringArray(v.internal_links)
+  );
+}
+
+// Strips ```json fences, then takes the substring from the first { to the
+// last } — the writer sometimes wraps otherwise-valid JSON in commentary.
+function extractJsonObject(raw: string): string | null {
+  const withoutFences = raw.replace(/```json/gi, "").replace(/```/g, "");
+  const start = withoutFences.indexOf("{");
+  const end = withoutFences.lastIndexOf("}");
+  if (start === -1 || end === -1 || end < start) return null;
+  return withoutFences.slice(start, end + 1);
+}
+
+function parseWriterOutput(raw: string): WriterOutput | null {
+  const jsonText = extractJsonObject(raw);
+  if (!jsonText) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch {
+    return null;
+  }
+
+  return isWriterOutput(parsed) ? parsed : null;
+}
+
+// ------------------------------------------------------------
 // Article id generation
 // articles.id has no DB default. Existing rows are a flat sequence
 // art_0001, art_0002, ... shared across all sites.
@@ -177,6 +298,7 @@ interface NewArticleInput {
   target_keyword: string;
   search_intent: string;
   slug: string;
+  status: "drafted" | "needs_review";
 }
 
 // Retries on a duplicate id (rare race between two requests) and on a
@@ -200,7 +322,7 @@ async function insertArticleWithRetry(
         title: input.title,
         target_keyword: input.target_keyword,
         search_intent: input.search_intent,
-        status: "drafted",
+        status: input.status,
       })
       .select("id")
       .single();
@@ -225,6 +347,55 @@ async function insertArticleWithRetry(
   throw new Error("Could not create article after several id/slug collisions");
 }
 
+async function insertArticleBrands(
+  supabaseAdmin: SupabaseClient,
+  articleId: string,
+  brands: BrandRow[],
+): Promise<string | null> {
+  if (brands.length === 0) return null;
+
+  const joinRows = brands.map((brand, index) => ({
+    article_id: articleId,
+    brand_id: brand.id,
+    role: index === 0 ? "primary" : "compared",
+    position: index + 1,
+  }));
+
+  const { error } = await supabaseAdmin.from("article_brands").insert(joinRows);
+  return error ? error.message : null;
+}
+
+interface DraftInsert {
+  article_id: string;
+  version: number;
+  body_markdown: string;
+  meta_description: string | null;
+  slug: string | null;
+  hero_image_alt: string | null;
+  sources: string[];
+  internal_links: string[];
+  word_count: number;
+  prompt_id: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+async function insertDraft(
+  supabaseAdmin: SupabaseClient,
+  draft: DraftInsert,
+): Promise<{ id: string } | { errorMessage: string }> {
+  const { data, error } = await supabaseAdmin
+    .from("drafts")
+    // cost_cl stays null — we have token counts but no agreed CL conversion yet.
+    .insert({ ...draft, cost_cl: null })
+    .select("id")
+    .single();
+
+  if (error) return { errorMessage: error.message };
+  return { id: data.id as string };
+}
+
 // ------------------------------------------------------------
 // Route
 // ------------------------------------------------------------
@@ -240,6 +411,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const providedSecret = request.headers.get("x-pipeline-secret");
   if (!providedSecret || providedSecret !== expectedSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
+  if (!deepseekApiKey) {
+    return NextResponse.json(
+      { error: "Server misconfigured: DEEPSEEK_API_KEY is not set" },
+      { status: 500 },
+    );
   }
 
   let supabaseAdmin: SupabaseClient;
@@ -348,7 +527,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // ---- active writer prompt, site-specific first, generic fallback ----
   const { data: specificPrompt, error: specificPromptError } = await supabaseAdmin
     .from("prompts")
-    .select("id,body")
+    .select("id,body,model")
     .eq("role", "writer")
     .is("variant", null)
     .eq("content_profile", siteRow.content_profile)
@@ -364,7 +543,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!prompt) {
     const { data: genericPrompt, error: genericPromptError } = await supabaseAdmin
       .from("prompts")
-      .select("id,body")
+      .select("id,body,model")
       .eq("role", "writer")
       .is("variant", null)
       .is("content_profile", null)
@@ -414,7 +593,120 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     keywords: input.keywords.join(", "),
   });
 
-  // ---- create the article row ----
+  // ---- call the writer model, one retry if the JSON doesn't parse ----
+  const messages: ChatMessage[] = [{ role: "user", content: resolvedPrompt }];
+
+  let attempt: DeepSeekResult;
+  try {
+    attempt = await callDeepSeek(deepseekApiKey, prompt.model, messages);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "DeepSeek call failed";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
+
+  if (!attempt.ok) {
+    return NextResponse.json(
+      { error: "DeepSeek API error", detail: attempt.detail },
+      { status: attempt.status },
+    );
+  }
+
+  let inputTokens = attempt.inputTokens;
+  let outputTokens = attempt.outputTokens;
+  let rawText = attempt.content;
+  let writerOutput = parseWriterOutput(rawText);
+
+  if (!writerOutput) {
+    messages.push({ role: "assistant", content: rawText });
+    messages.push({
+      role: "user",
+      content: "Your last response was not valid JSON. Return only the JSON object.",
+    });
+
+    let retry: DeepSeekResult;
+    try {
+      retry = await callDeepSeek(deepseekApiKey, prompt.model, messages);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "DeepSeek call failed";
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
+
+    if (!retry.ok) {
+      return NextResponse.json(
+        { error: "DeepSeek API error", detail: retry.detail },
+        { status: retry.status },
+      );
+    }
+
+    inputTokens += retry.inputTokens;
+    outputTokens += retry.outputTokens;
+    rawText = retry.content;
+    writerOutput = parseWriterOutput(rawText);
+  }
+
+  // ---- both attempts failed to parse: keep the raw text, flag for review ----
+  if (!writerOutput) {
+    let article: { id: string };
+    try {
+      article = await insertArticleWithRetry(supabaseAdmin, {
+        site_id: siteRow.id,
+        title: input.title,
+        target_keyword: input.target_keyword,
+        search_intent: input.search_intent,
+        slug: slugify(input.title),
+        status: "needs_review",
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not create article";
+      return NextResponse.json({ error: message }, { status: 500 });
+    }
+
+    const joinError = await insertArticleBrands(supabaseAdmin, article.id, brands);
+    if (joinError) {
+      return NextResponse.json(
+        { error: `Article created but could not link brands: ${joinError}` },
+        { status: 500 },
+      );
+    }
+
+    const draftResult = await insertDraft(supabaseAdmin, {
+      article_id: article.id,
+      version: 1,
+      body_markdown: rawText,
+      meta_description: null,
+      slug: null,
+      hero_image_alt: null,
+      sources: [],
+      internal_links: [],
+      word_count: countWords(rawText),
+      prompt_id: prompt.id,
+      model: prompt.model,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+    });
+
+    if ("errorMessage" in draftResult) {
+      return NextResponse.json(
+        { error: `Article created but could not save draft: ${draftResult.errorMessage}` },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        error: "DeepSeek did not return valid JSON after one retry",
+        article_id: article.id,
+        draft_id: draftResult.id,
+      },
+      { status: 502 },
+    );
+  }
+
+  // ---- success ----
+  const finalSlug = isNonEmptyString(writerOutput.slug)
+    ? slugify(writerOutput.slug)
+    : slugify(input.title);
+
   let article: { id: string };
   try {
     article = await insertArticleWithRetry(supabaseAdmin, {
@@ -422,35 +714,51 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       title: input.title,
       target_keyword: input.target_keyword,
       search_intent: input.search_intent,
-      slug: slugify(input.title),
+      slug: finalSlug,
+      status: "drafted",
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not create article";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
-  // ---- join rows for the brands this article covers ----
-  if (brands.length > 0) {
-    const joinRows = brands.map((brand, index) => ({
-      article_id: article.id,
-      brand_id: brand.id,
-      role: index === 0 ? "primary" : "compared",
-      position: index + 1,
-    }));
+  const joinError = await insertArticleBrands(supabaseAdmin, article.id, brands);
+  if (joinError) {
+    return NextResponse.json(
+      { error: `Article created but could not link brands: ${joinError}` },
+      { status: 500 },
+    );
+  }
 
-    const { error: joinError } = await supabaseAdmin.from("article_brands").insert(joinRows);
-    if (joinError) {
-      return NextResponse.json(
-        { error: `Article created but could not link brands: ${joinError.message}` },
-        { status: 500 },
-      );
-    }
+  const wordCount = countWords(writerOutput.body_markdown);
+
+  const draftResult = await insertDraft(supabaseAdmin, {
+    article_id: article.id,
+    version: 1,
+    body_markdown: writerOutput.body_markdown,
+    meta_description: writerOutput.meta_description,
+    slug: finalSlug,
+    hero_image_alt: writerOutput.hero_image_alt,
+    sources: writerOutput.sources,
+    internal_links: writerOutput.internal_links,
+    word_count: wordCount,
+    prompt_id: prompt.id,
+    model: prompt.model,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+  });
+
+  if ("errorMessage" in draftResult) {
+    return NextResponse.json(
+      { error: `Article created but could not save draft: ${draftResult.errorMessage}` },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({
     article_id: article.id,
-    resolved_prompt: resolvedPrompt,
-    brand_count: brands.length,
-    warnings,
+    draft_id: draftResult.id,
+    word_count: wordCount,
+    tokens: { input_tokens: inputTokens, output_tokens: outputTokens },
   });
 }
