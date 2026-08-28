@@ -74,10 +74,15 @@ function isNonEmptyString(value: unknown): value is string {
 }
 
 function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === "string")
+  );
 }
 
-function validateBody(body: unknown): { errors: string[]; value: GenerateRequestBody | null } {
+function validateBody(body: unknown): {
+  errors: string[];
+  value: GenerateRequestBody | null;
+} {
   const errors: string[] = [];
 
   if (typeof body !== "object" || body === null) {
@@ -88,10 +93,14 @@ function validateBody(body: unknown): { errors: string[]; value: GenerateRequest
 
   if (!isNonEmptyString(candidate.site_id)) errors.push("site_id is required");
   if (!isNonEmptyString(candidate.title)) errors.push("title is required");
-  if (!isNonEmptyString(candidate.target_keyword)) errors.push("target_keyword is required");
-  if (!isNonEmptyString(candidate.search_intent)) errors.push("search_intent is required");
-  if (!isStringArray(candidate.keywords)) errors.push("keywords must be an array of strings");
-  if (!isStringArray(candidate.brand_names)) errors.push("brand_names must be an array of strings (can be empty)");
+  if (!isNonEmptyString(candidate.target_keyword))
+    errors.push("target_keyword is required");
+  if (!isNonEmptyString(candidate.search_intent))
+    errors.push("search_intent is required");
+  if (!isStringArray(candidate.keywords))
+    errors.push("keywords must be an array of strings");
+  if (!isStringArray(candidate.brand_names))
+    errors.push("brand_names must be an array of strings (can be empty)");
 
   if (errors.length > 0) {
     return { errors, value: null };
@@ -137,10 +146,16 @@ function formatBrandFacts(brands: BrandRow[]): string {
     .join("\n\n");
 }
 
-function fillTemplate(template: string, values: Record<string, string>): string {
-  return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (match, key: string) => {
-    return key in values ? values[key] : match;
-  });
+function fillTemplate(
+  template: string,
+  values: Record<string, string>,
+): string {
+  return template.replace(
+    /{{\s*([a-zA-Z0-9_]+)\s*}}/g,
+    (match, key: string) => {
+      return key in values ? values[key] : match;
+    },
+  );
 }
 
 function daysSince(dateString: string | null): number | null {
@@ -426,7 +441,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     supabaseAdmin = getSupabaseAdmin();
   } catch {
     return NextResponse.json(
-      { error: "Server misconfigured: Supabase admin client is not configured" },
+      {
+        error: "Server misconfigured: Supabase admin client is not configured",
+      },
       { status: 500 },
     );
   }
@@ -440,7 +457,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const { errors, value: input } = validateBody(rawBody);
   if (!input) {
-    return NextResponse.json({ error: "Invalid input", details: errors }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid input", details: errors },
+      { status: 400 },
+    );
   }
 
   const { data: site, error: siteError } = await supabaseAdmin
@@ -450,7 +470,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .maybeSingle();
 
   if (siteError) {
-    return NextResponse.json({ error: "Could not load site" }, { status: 500 });
+    // TEMP DEBUG — remove `detail` once the production 500 root cause is found.
+    return NextResponse.json(
+      { error: "Could not load site", detail: siteError.message },
+      { status: 500 },
+    );
   }
   if (!site) {
     return NextResponse.json({ error: "Unknown site_id" }, { status: 404 });
@@ -466,7 +490,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .maybeSingle();
 
   if (profileError) {
-    return NextResponse.json({ error: "Could not load brand profile" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not load brand profile" },
+      { status: 500 },
+    );
   }
   if (!brandProfile) {
     return NextResponse.json(
@@ -490,19 +517,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .in("name", requestedNames);
 
     if (brandsError) {
-      return NextResponse.json({ error: "Could not load brands" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Could not load brands" },
+        { status: 500 },
+      );
     }
 
     const found = (brandRows ?? []) as BrandRow[];
     const foundByName = new Map(found.map((b) => [b.name, b]));
 
-    const missingNames = requestedNames.filter((name) => !foundByName.has(name));
+    const missingNames = requestedNames.filter(
+      (name) => !foundByName.has(name),
+    );
     const inactiveNames = found.filter((b) => !b.active).map((b) => b.name);
 
     if (missingNames.length > 0 || inactiveNames.length > 0) {
       return NextResponse.json(
         {
-          error: "refusing job — one or more brands are not a verified, active record",
+          error:
+            "refusing job — one or more brands are not a verified, active record",
           missing_brands: missingNames,
           inactive_brands: inactiveNames,
         },
@@ -525,40 +558,50 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   // ---- active writer prompt, site-specific first, generic fallback ----
-  const { data: specificPrompt, error: specificPromptError } = await supabaseAdmin
-    .from("prompts")
-    .select("id,body,model")
-    .eq("role", "writer")
-    .is("variant", null)
-    .eq("content_profile", siteRow.content_profile)
-    .eq("active", true)
-    .maybeSingle();
+  const { data: specificPrompt, error: specificPromptError } =
+    await supabaseAdmin
+      .from("prompts")
+      .select("id,body,model")
+      .eq("role", "writer")
+      .is("variant", null)
+      .eq("content_profile", siteRow.content_profile)
+      .eq("active", true)
+      .maybeSingle();
 
   if (specificPromptError) {
-    return NextResponse.json({ error: "Could not load writer prompt" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not load writer prompt" },
+      { status: 500 },
+    );
   }
 
   let prompt = specificPrompt as PromptRow | null;
 
   if (!prompt) {
-    const { data: genericPrompt, error: genericPromptError } = await supabaseAdmin
-      .from("prompts")
-      .select("id,body,model")
-      .eq("role", "writer")
-      .is("variant", null)
-      .is("content_profile", null)
-      .eq("active", true)
-      .maybeSingle();
+    const { data: genericPrompt, error: genericPromptError } =
+      await supabaseAdmin
+        .from("prompts")
+        .select("id,body,model")
+        .eq("role", "writer")
+        .is("variant", null)
+        .is("content_profile", null)
+        .eq("active", true)
+        .maybeSingle();
 
     if (genericPromptError) {
-      return NextResponse.json({ error: "Could not load writer prompt" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Could not load writer prompt" },
+        { status: 500 },
+      );
     }
     prompt = genericPrompt as PromptRow | null;
   }
 
   if (!prompt) {
     return NextResponse.json(
-      { error: `no active writer prompt for content_profile '${siteRow.content_profile}'` },
+      {
+        error: `no active writer prompt for content_profile '${siteRow.content_profile}'`,
+      },
       { status: 400 },
     );
   }
@@ -620,14 +663,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     messages.push({ role: "assistant", content: rawText });
     messages.push({
       role: "user",
-      content: "Your last response was not valid JSON. Return only the JSON object.",
+      content:
+        "Your last response was not valid JSON. Return only the JSON object.",
     });
 
     let retry: DeepSeekResult;
     try {
       retry = await callDeepSeek(deepseekApiKey, prompt.model, messages);
     } catch (err) {
-      const message = err instanceof Error ? err.message : "DeepSeek call failed";
+      const message =
+        err instanceof Error ? err.message : "DeepSeek call failed";
       return NextResponse.json({ error: message }, { status: 502 });
     }
 
@@ -657,11 +702,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         status: "needs_review",
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not create article";
+      const message =
+        err instanceof Error ? err.message : "Could not create article";
       return NextResponse.json({ error: message }, { status: 500 });
     }
 
-    const joinError = await insertArticleBrands(supabaseAdmin, article.id, brands);
+    const joinError = await insertArticleBrands(
+      supabaseAdmin,
+      article.id,
+      brands,
+    );
     if (joinError) {
       return NextResponse.json(
         { error: `Article created but could not link brands: ${joinError}` },
@@ -687,7 +737,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if ("errorMessage" in draftResult) {
       return NextResponse.json(
-        { error: `Article created but could not save draft: ${draftResult.errorMessage}` },
+        {
+          error: `Article created but could not save draft: ${draftResult.errorMessage}`,
+        },
         { status: 500 },
       );
     }
@@ -718,11 +770,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       status: "drafted",
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Could not create article";
+    const message =
+      err instanceof Error ? err.message : "Could not create article";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
-  const joinError = await insertArticleBrands(supabaseAdmin, article.id, brands);
+  const joinError = await insertArticleBrands(
+    supabaseAdmin,
+    article.id,
+    brands,
+  );
   if (joinError) {
     return NextResponse.json(
       { error: `Article created but could not link brands: ${joinError}` },
@@ -750,7 +807,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if ("errorMessage" in draftResult) {
     return NextResponse.json(
-      { error: `Article created but could not save draft: ${draftResult.errorMessage}` },
+      {
+        error: `Article created but could not save draft: ${draftResult.errorMessage}`,
+      },
       { status: 500 },
     );
   }
@@ -762,3 +821,4 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     tokens: { input_tokens: inputTokens, output_tokens: outputTokens },
   });
 }
+git add app/api/generate/route.ts
