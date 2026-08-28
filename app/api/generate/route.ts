@@ -821,4 +821,3 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     tokens: { input_tokens: inputTokens, output_tokens: outputTokens },
   });
 }
-git add app/api/generate/route.ts
