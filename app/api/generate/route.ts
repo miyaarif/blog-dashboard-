@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { slugify, countWords } from "@/lib/newArticle";
+import {
+  SiteRow,
+  BrandProfileRow,
+  BrandRow,
+  PromptRow,
+  STALE_AFTER_DAYS,
+  isNonEmptyString,
+  isStringArray,
+  formatBulletList,
+  formatBrandFacts,
+  fillTemplate,
+  daysSince,
+  callDeepSeek,
+  WRITER_MAX_TOKENS,
+  ChatMessage,
+  DeepSeekResult,
+  parseWriterOutput,
+  insertArticleWithRetry,
+  insertArticleBrands,
+  insertDraft,
+} from "@/lib/pipelineShared";
 
 // ------------------------------------------------------------
 // Input shape
@@ -13,70 +34,6 @@ interface GenerateRequestBody {
   keywords: string[];
   brand_names: string[];
   search_intent: string;
-}
-
-// ------------------------------------------------------------
-// Row shapes — only the columns this route reads
-// ------------------------------------------------------------
-interface SiteRow {
-  id: string;
-  name: string;
-  domain: string;
-  vertical: string | null;
-  audience: string | null;
-  monetisation: string | null;
-  content_profile: string;
-}
-
-interface BrandProfileRow {
-  tone: string;
-  reading_level: string | null;
-  person: string | null;
-  sentence_rhythm: string | null;
-  use_contractions: boolean;
-  use_em_dashes: boolean;
-  structure_rules: string | null;
-  heading_style: string | null;
-  opening_style: string | null;
-  cta_style: string | null;
-  banned_words: string[] | null;
-  mandatory_elements: string[] | null;
-  must_avoid: string | null;
-  typical_word_count: number | null;
-}
-
-interface BrandRow {
-  id: string;
-  name: string;
-  what_they_are: string | null;
-  strengths: string[] | null;
-  weaknesses: string[] | null;
-  eligibility: string | null;
-  product_range: string | null;
-  rate_note: string | null;
-  last_verified_at: string | null;
-  active: boolean;
-}
-
-interface PromptRow {
-  id: string;
-  body: string;
-  model: string;
-}
-
-const STALE_AFTER_DAYS = 90;
-
-// ------------------------------------------------------------
-// Validation
-// ------------------------------------------------------------
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) && value.every((item) => typeof item === "string")
-  );
 }
 
 function validateBody(body: unknown): {
@@ -117,298 +74,6 @@ function validateBody(body: unknown): {
       brand_names: candidate.brand_names as string[],
     },
   };
-}
-
-// ------------------------------------------------------------
-// Formatting helpers for the prompt template
-// ------------------------------------------------------------
-function formatBulletList(items: string[] | null): string {
-  if (!items || items.length === 0) return "- (none recorded)";
-  return items.map((item) => `- ${item}`).join("\n");
-}
-
-function formatBrandFacts(brands: BrandRow[]): string {
-  if (brands.length === 0) {
-    return "No partner brands for this article. Write on the site's own authority, no affiliate brand facts to include.";
-  }
-  return brands
-    .map((brand) =>
-      [
-        brand.name,
-        `What they are: ${brand.what_they_are ?? "Not recorded."}`,
-        `Strengths:\n${formatBulletList(brand.strengths)}`,
-        `Weaknesses:\n${formatBulletList(brand.weaknesses)}`,
-        `Eligibility: ${brand.eligibility ?? "Not recorded."}`,
-        `Product range: ${brand.product_range ?? "Not recorded."}`,
-        `Rate note: ${brand.rate_note ?? "Not recorded."}`,
-      ].join("\n"),
-    )
-    .join("\n\n");
-}
-
-function fillTemplate(
-  template: string,
-  values: Record<string, string>,
-): string {
-  return template.replace(
-    /{{\s*([a-zA-Z0-9_]+)\s*}}/g,
-    (match, key: string) => {
-      return key in values ? values[key] : match;
-    },
-  );
-}
-
-function daysSince(dateString: string | null): number | null {
-  if (!dateString) return null;
-  const then = new Date(dateString).getTime();
-  if (Number.isNaN(then)) return null;
-  return (Date.now() - then) / (1000 * 60 * 60 * 24);
-}
-
-// ------------------------------------------------------------
-// DeepSeek — OpenAI-compatible chat completions
-// ------------------------------------------------------------
-const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
-const DEEPSEEK_TIMEOUT_MS = 120_000;
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface DeepSeekSuccess {
-  ok: true;
-  content: string;
-  inputTokens: number;
-  outputTokens: number;
-}
-
-interface DeepSeekFailure {
-  ok: false;
-  status: number;
-  detail: unknown;
-}
-
-type DeepSeekResult = DeepSeekSuccess | DeepSeekFailure;
-
-async function callDeepSeek(
-  apiKey: string,
-  model: string,
-  messages: ChatMessage[],
-): Promise<DeepSeekResult> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), DEEPSEEK_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(DEEPSEEK_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        max_tokens: 4000,
-        temperature: 0.7,
-      }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      const detail = await res.json().catch(() => null);
-      return { ok: false, status: res.status, detail };
-    }
-
-    const data = (await res.json()) as {
-      choices: { message: { content: string } }[];
-      usage: { prompt_tokens: number; completion_tokens: number };
-    };
-
-    return {
-      ok: true,
-      content: data.choices[0].message.content,
-      inputTokens: data.usage.prompt_tokens,
-      outputTokens: data.usage.completion_tokens,
-    };
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-// ------------------------------------------------------------
-// Writer output — the JSON the writer prompt asks DeepSeek for
-// ------------------------------------------------------------
-interface WriterOutput {
-  body_markdown: string;
-  meta_description: string;
-  slug: string;
-  hero_image_alt: string;
-  sources: string[];
-  internal_links: string[];
-}
-
-function isWriterOutput(value: unknown): value is WriterOutput {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.body_markdown === "string" &&
-    typeof v.meta_description === "string" &&
-    typeof v.slug === "string" &&
-    typeof v.hero_image_alt === "string" &&
-    isStringArray(v.sources) &&
-    isStringArray(v.internal_links)
-  );
-}
-
-// Strips ```json fences, then takes the substring from the first { to the
-// last } — the writer sometimes wraps otherwise-valid JSON in commentary.
-function extractJsonObject(raw: string): string | null {
-  const withoutFences = raw.replace(/```json/gi, "").replace(/```/g, "");
-  const start = withoutFences.indexOf("{");
-  const end = withoutFences.lastIndexOf("}");
-  if (start === -1 || end === -1 || end < start) return null;
-  return withoutFences.slice(start, end + 1);
-}
-
-function parseWriterOutput(raw: string): WriterOutput | null {
-  const jsonText = extractJsonObject(raw);
-  if (!jsonText) return null;
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(jsonText);
-  } catch {
-    return null;
-  }
-
-  return isWriterOutput(parsed) ? parsed : null;
-}
-
-// ------------------------------------------------------------
-// Article id generation
-// articles.id has no DB default. Existing rows are a flat sequence
-// art_0001, art_0002, ... shared across all sites.
-// ------------------------------------------------------------
-async function nextArticleId(supabaseAdmin: SupabaseClient): Promise<string> {
-  const { data, error } = await supabaseAdmin
-    .from("articles")
-    .select("id")
-    .order("id", { ascending: false })
-    .limit(1);
-
-  if (error) {
-    throw new Error(`Could not read the last article id: ${error.message}`);
-  }
-
-  const lastId = data?.[0]?.id as string | undefined;
-  const match = lastId?.match(/^art_(\d+)$/);
-  const nextNumber = match ? parseInt(match[1], 10) + 1 : 1;
-  return `art_${String(nextNumber).padStart(4, "0")}`;
-}
-
-interface NewArticleInput {
-  site_id: string;
-  title: string;
-  target_keyword: string;
-  search_intent: string;
-  slug: string;
-  status: "drafted" | "needs_review";
-}
-
-// Retries on a duplicate id (rare race between two requests) and on a
-// duplicate slug (two titles that slugify the same way).
-async function insertArticleWithRetry(
-  supabaseAdmin: SupabaseClient,
-  input: NewArticleInput,
-  maxAttempts = 5,
-): Promise<{ id: string }> {
-  let slug = input.slug;
-
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const id = await nextArticleId(supabaseAdmin);
-
-    const { data, error } = await supabaseAdmin
-      .from("articles")
-      .insert({
-        id,
-        site_id: input.site_id,
-        slug,
-        title: input.title,
-        target_keyword: input.target_keyword,
-        search_intent: input.search_intent,
-        status: input.status,
-      })
-      .select("id")
-      .single();
-
-    if (!error) {
-      return data as { id: string };
-    }
-
-    const isDuplicate = error.code === "23505";
-    if (!isDuplicate) {
-      throw new Error(`Could not create article: ${error.message}`);
-    }
-
-    if (error.message.includes("slug")) {
-      slug = `${input.slug}-${attempt + 2}`;
-      continue;
-    }
-    // Otherwise assume it was the id (a concurrent request took it) — loop
-    // and nextArticleId() will pick a fresh number.
-  }
-
-  throw new Error("Could not create article after several id/slug collisions");
-}
-
-async function insertArticleBrands(
-  supabaseAdmin: SupabaseClient,
-  articleId: string,
-  brands: BrandRow[],
-): Promise<string | null> {
-  if (brands.length === 0) return null;
-
-  const joinRows = brands.map((brand, index) => ({
-    article_id: articleId,
-    brand_id: brand.id,
-    role: index === 0 ? "primary" : "compared",
-    position: index + 1,
-  }));
-
-  const { error } = await supabaseAdmin.from("article_brands").insert(joinRows);
-  return error ? error.message : null;
-}
-
-interface DraftInsert {
-  article_id: string;
-  version: number;
-  body_markdown: string;
-  meta_description: string | null;
-  slug: string | null;
-  hero_image_alt: string | null;
-  sources: string[];
-  internal_links: string[];
-  word_count: number;
-  prompt_id: string;
-  model: string;
-  input_tokens: number;
-  output_tokens: number;
-}
-
-async function insertDraft(
-  supabaseAdmin: SupabaseClient,
-  draft: DraftInsert,
-): Promise<{ id: string } | { errorMessage: string }> {
-  const { data, error } = await supabaseAdmin
-    .from("drafts")
-    // cost_cl stays null — we have token counts but no agreed CL conversion yet.
-    .insert({ ...draft, cost_cl: null })
-    .select("id")
-    .single();
-
-  if (error) return { errorMessage: error.message };
-  return { id: data.id as string };
 }
 
 // ------------------------------------------------------------
@@ -637,7 +302,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   let attempt: DeepSeekResult;
   try {
-    attempt = await callDeepSeek(deepseekApiKey, prompt.model, messages);
+    attempt = await callDeepSeek(
+      deepseekApiKey,
+      prompt.model,
+      messages,
+      WRITER_MAX_TOKENS,
+      false,
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "DeepSeek call failed";
     return NextResponse.json({ error: message }, { status: 502 });
@@ -665,7 +336,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     let retry: DeepSeekResult;
     try {
-      retry = await callDeepSeek(deepseekApiKey, prompt.model, messages);
+      retry = await callDeepSeek(
+        deepseekApiKey,
+        prompt.model,
+        messages,
+        WRITER_MAX_TOKENS,
+        false,
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "DeepSeek call failed";
@@ -689,14 +366,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!writerOutput) {
     let article: { id: string };
     try {
-      article = await insertArticleWithRetry(supabaseAdmin, {
-        site_id: siteRow.id,
-        title: input.title,
-        target_keyword: input.target_keyword,
-        search_intent: input.search_intent,
-        slug: slugify(input.title),
-        status: "needs_review",
-      });
+      article = await insertArticleWithRetry(
+        supabaseAdmin,
+        {
+          site_id: siteRow.id,
+          title: input.title,
+          target_keyword: input.target_keyword,
+          search_intent: input.search_intent,
+          slug: slugify(input.title),
+          status: "needs_review",
+        },
+        slugify,
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Could not create article";
@@ -757,14 +438,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   let article: { id: string };
   try {
-    article = await insertArticleWithRetry(supabaseAdmin, {
-      site_id: siteRow.id,
-      title: input.title,
-      target_keyword: input.target_keyword,
-      search_intent: input.search_intent,
-      slug: finalSlug,
-      status: "drafted",
-    });
+    article = await insertArticleWithRetry(
+      supabaseAdmin,
+      {
+        site_id: siteRow.id,
+        title: input.title,
+        target_keyword: input.target_keyword,
+        search_intent: input.search_intent,
+        slug: finalSlug,
+        status: "drafted",
+      },
+      slugify,
+    );
   } catch (err) {
     const message =
       err instanceof Error ? err.message : "Could not create article";

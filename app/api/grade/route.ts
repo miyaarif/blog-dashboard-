@@ -1,6 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
+import {
+  SiteRow,
+  BrandProfileRow,
+  BrandRow,
+  RubricCriterion,
+  RubricRow,
+  PromptRow,
+  isNonEmptyString,
+  formatBulletList,
+  formatBrandFacts,
+  formatBrandProfileText,
+  formatRubricText,
+  fillTemplate,
+  callDeepSeek,
+  GRADER_MAX_TOKENS,
+  ChatMessage,
+  DeepSeekResult,
+  DeepSeekSuccess,
+  resolveGraderOutput,
+  logParseFailure,
+  recomputeWeightedTotal,
+  findLowScoreCriterion,
+  insertGrade,
+} from "@/lib/pipelineShared";
 
 // ------------------------------------------------------------
 // Input shape
@@ -9,9 +33,6 @@ interface GradeRequestBody {
   draft_id: string;
 }
 
-// ------------------------------------------------------------
-// Row shapes — only the columns this route reads
-// ------------------------------------------------------------
 interface DraftRow {
   id: string;
   article_id: string;
@@ -23,67 +44,6 @@ interface ArticleRow {
   site_id: string;
   title: string;
   target_keyword: string;
-}
-
-interface SiteRow {
-  id: string;
-  name: string;
-  content_profile: string;
-}
-
-interface BrandProfileRow {
-  tone: string;
-  reading_level: string | null;
-  person: string | null;
-  sentence_rhythm: string | null;
-  use_contractions: boolean;
-  use_em_dashes: boolean;
-  structure_rules: string | null;
-  heading_style: string | null;
-  opening_style: string | null;
-  cta_style: string | null;
-  banned_words: string[] | null;
-  mandatory_elements: string[] | null;
-  must_avoid: string | null;
-  typical_word_count: number | null;
-}
-
-interface BrandRow {
-  id: string;
-  name: string;
-  what_they_are: string | null;
-  strengths: string[] | null;
-  weaknesses: string[] | null;
-  eligibility: string | null;
-  product_range: string | null;
-  rate_note: string | null;
-}
-
-interface RubricCriterion {
-  name: string;
-  weight: number;
-  scale_1: string;
-  scale_5: string;
-}
-
-interface RubricRow {
-  id: string;
-  criteria: RubricCriterion[];
-  hard_fail_rules: string[];
-  pass_threshold: number;
-}
-
-interface PromptRow {
-  id: string;
-  body: string;
-  model: string;
-}
-
-// ------------------------------------------------------------
-// Validation
-// ------------------------------------------------------------
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
 }
 
 function validateBody(body: unknown): {
@@ -98,303 +58,6 @@ function validateBody(body: unknown): {
     return { error: "draft_id is required", value: null };
   }
   return { error: null, value: { draft_id: candidate.draft_id } };
-}
-
-// ------------------------------------------------------------
-// Formatting helpers for the prompt template
-// ------------------------------------------------------------
-function formatBulletList(items: string[] | null): string {
-  if (!items || items.length === 0) return "- (none recorded)";
-  return items.map((item) => `- ${item}`).join("\n");
-}
-
-function formatBrandProfileText(profile: BrandProfileRow): string {
-  return [
-    `Tone: ${profile.tone}`,
-    `Reading level: ${profile.reading_level ?? "Not recorded."}`,
-    `Person: ${profile.person ?? "Not recorded."}`,
-    `Sentence rhythm: ${profile.sentence_rhythm ?? "Not recorded."}`,
-    `Contractions: ${profile.use_contractions ? "yes" : "no"}`,
-    `Em dashes: ${profile.use_em_dashes ? "yes" : "no"}`,
-    `Structure: ${profile.structure_rules ?? "Not recorded."}`,
-    `Headings: ${profile.heading_style ?? "Not recorded."}`,
-    `Opening: ${profile.opening_style ?? "Not recorded."}`,
-    `Closing: ${profile.cta_style ?? "Not recorded."}`,
-    `Target length: about ${profile.typical_word_count ?? "an unspecified number of"} words`,
-    `Must include:\n${formatBulletList(profile.mandatory_elements)}`,
-    `Must avoid: ${profile.must_avoid ?? "Not recorded."}`,
-  ].join("\n");
-}
-
-function formatBrandFacts(brands: BrandRow[]): string {
-  if (brands.length === 0) {
-    return "No partner brands for this article.";
-  }
-  return brands
-    .map((brand) =>
-      [
-        brand.name,
-        `What they are: ${brand.what_they_are ?? "Not recorded."}`,
-        `Strengths:\n${formatBulletList(brand.strengths)}`,
-        `Weaknesses:\n${formatBulletList(brand.weaknesses)}`,
-        `Eligibility: ${brand.eligibility ?? "Not recorded."}`,
-        `Product range: ${brand.product_range ?? "Not recorded."}`,
-        `Rate note: ${brand.rate_note ?? "Not recorded."}`,
-      ].join("\n"),
-    )
-    .join("\n\n");
-}
-
-function formatRubricText(criteria: RubricCriterion[]): string {
-  return criteria
-    .map(
-      (c) =>
-        `${c.name} (weight ${c.weight}): 1 = ${c.scale_1} | 5 = ${c.scale_5}`,
-    )
-    .join("\n");
-}
-
-function fillTemplate(
-  template: string,
-  values: Record<string, string>,
-): string {
-  return template.replace(
-    /{{\s*([a-zA-Z0-9_]+)\s*}}/g,
-    (match, key: string) => {
-      return key in values ? values[key] : match;
-    },
-  );
-}
-
-// ------------------------------------------------------------
-// DeepSeek — OpenAI-compatible chat completions
-// ------------------------------------------------------------
-const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
-const DEEPSEEK_TIMEOUT_MS = 120_000;
-// A full grade (scores + one issue per weak criterion) needs ~3000 tokens
-// of final JSON. deepseek-reasoner spends part of this same budget on
-// reasoning_content before it ever writes the answer, so the ceiling has
-// to cover reasoning + the final JSON, not just the JSON alone.
-const GRADER_MAX_TOKENS = 8000;
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface DeepSeekSuccess {
-  ok: true;
-  content: string;
-  reasoningContent: string | undefined;
-  finishReason: string | undefined;
-  usage: { prompt_tokens: number; completion_tokens: number };
-  raw: unknown;
-  inputTokens: number;
-  outputTokens: number;
-}
-
-interface DeepSeekFailure {
-  ok: false;
-  status: number;
-  detail: unknown;
-}
-
-type DeepSeekResult = DeepSeekSuccess | DeepSeekFailure;
-
-async function callDeepSeek(
-  apiKey: string,
-  model: string,
-  messages: ChatMessage[],
-): Promise<DeepSeekResult> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), DEEPSEEK_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(DEEPSEEK_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        max_tokens: GRADER_MAX_TOKENS,
-        temperature: 0.7,
-        response_format: { type: "json_object" },
-      }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      const detail = await res.json().catch(() => null);
-      return { ok: false, status: res.status, detail };
-    }
-
-    const data = (await res.json()) as {
-      choices: {
-        message: { content: string; reasoning_content?: string };
-        finish_reason?: string;
-      }[];
-      usage: { prompt_tokens: number; completion_tokens: number };
-    };
-
-    return {
-      ok: true,
-      content: data.choices[0].message.content,
-      reasoningContent: data.choices[0].message.reasoning_content,
-      finishReason: data.choices[0].finish_reason,
-      usage: data.usage,
-      raw: data,
-      inputTokens: data.usage.prompt_tokens,
-      outputTokens: data.usage.completion_tokens,
-    };
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-// ------------------------------------------------------------
-// Grader output — the JSON the grader prompt asks DeepSeek for
-// ------------------------------------------------------------
-interface Issue {
-  criterion: string;
-  severity: string;
-  quote: string;
-  problem: string;
-  suggested_fix: string;
-}
-
-interface GraderOutput {
-  scores: Record<string, number>;
-  weighted_total: number;
-  passed: boolean;
-  hard_fail_reason: string | null;
-  issues: Issue[];
-  verdict_summary: string;
-}
-
-function isIssue(value: unknown): value is Issue {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.criterion === "string" &&
-    typeof v.severity === "string" &&
-    typeof v.quote === "string" &&
-    typeof v.problem === "string" &&
-    typeof v.suggested_fix === "string"
-  );
-}
-
-// Requires every rubric criterion to be present in scores (step 8) as
-// part of the same shape check the writer uses for its own JSON.
-function isGraderOutput(
-  value: unknown,
-  requiredCriteria: string[],
-): value is GraderOutput {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value as Record<string, unknown>;
-
-  if (typeof v.scores !== "object" || v.scores === null) return false;
-  const scores = v.scores as Record<string, unknown>;
-  for (const name of requiredCriteria) {
-    if (typeof scores[name] !== "number") return false;
-  }
-
-  if (typeof v.weighted_total !== "number") return false;
-  if (typeof v.passed !== "boolean") return false;
-  if (v.hard_fail_reason !== null && typeof v.hard_fail_reason !== "string")
-    return false;
-  if (!Array.isArray(v.issues) || !v.issues.every(isIssue)) return false;
-  if (typeof v.verdict_summary !== "string") return false;
-
-  return true;
-}
-
-// Strips ```json fences, then takes the substring from the first { to the
-// last } — same approach as the writer route.
-function extractJsonObject(raw: string): string | null {
-  const withoutFences = raw.replace(/```json/gi, "").replace(/```/g, "");
-  const start = withoutFences.indexOf("{");
-  const end = withoutFences.lastIndexOf("}");
-  if (start === -1 || end === -1 || end < start) return null;
-  return withoutFences.slice(start, end + 1);
-}
-
-function parseGraderOutput(
-  raw: string | undefined,
-  requiredCriteria: string[],
-): GraderOutput | null {
-  if (!raw) return null;
-  const jsonText = extractJsonObject(raw);
-  if (!jsonText) return null;
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(jsonText);
-  } catch {
-    return null;
-  }
-
-  return isGraderOutput(parsed, requiredCriteria) ? parsed : null;
-}
-
-// deepseek-reasoner sometimes leaves `content` empty and puts everything —
-// including, at times, the final answer — in reasoning_content instead.
-// Try the normal field first, then fall back to reasoning_content.
-function resolveGraderOutput(
-  result: DeepSeekSuccess,
-  requiredCriteria: string[],
-): GraderOutput | null {
-  return (
-    parseGraderOutput(result.content, requiredCriteria) ??
-    parseGraderOutput(result.reasoningContent, requiredCriteria)
-  );
-}
-
-// Never log the draft body — this logs the grader's own reply, not the
-// draft it was reviewing. finish_reason=="length" means it ran out of
-// max_tokens, which for a reasoning model can happen mid-thought, before
-// it ever writes `content`.
-function logParseFailure(attemptNumber: number, result: DeepSeekSuccess): void {
-  console.warn(
-    `grader parse failure (attempt ${attemptNumber}): finish_reason=${result.finishReason ?? "unknown"} ` +
-      `content_length=${result.content?.length ?? 0} reasoning_content_length=${result.reasoningContent?.length ?? 0} ` +
-      `usage=${JSON.stringify(result.usage)}`,
-  );
-  console.warn(
-    `grader full response (attempt ${attemptNumber}): ${JSON.stringify(result.raw)}`,
-  );
-}
-
-function recomputeWeightedTotal(
-  scores: Record<string, number>,
-  criteria: RubricCriterion[],
-): number {
-  const total = criteria.reduce(
-    (sum, c) => sum + (scores[c.name] / 5) * c.weight,
-    0,
-  );
-  return Math.round(total);
-}
-
-// Server-side floor: if any rubric criterion scored 2 or below, this is an
-// automatic hard fail regardless of the weighted total or what the model
-// itself decided to put in hard_fail_reason. This is pure arithmetic on
-// scores we already have — it must not depend on the model remembering to
-// apply the rule from the prompt text, same reasoning as why we recompute
-// weighted_total instead of trusting the model's math.
-function findLowScoreCriterion(
-  scores: Record<string, number>,
-  criteria: RubricCriterion[],
-): RubricCriterion | null {
-  for (const c of criteria) {
-    const score = scores[c.name];
-    if (typeof score === "number" && score <= 2) {
-      return c;
-    }
-  }
-  return null;
 }
 
 // ------------------------------------------------------------
@@ -648,7 +311,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const requiredCriteria = rubricRow.criteria.map((c) => c.name);
+  const requiredCriteria = rubricRow.criteria.map(
+    (c: RubricCriterion) => c.name,
+  );
 
   const resolvedPrompt = fillTemplate(prompt.body, {
     site_name: siteRow.name,
@@ -669,7 +334,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   let attempt: DeepSeekResult;
   try {
-    attempt = await callDeepSeek(deepseekApiKey, prompt.model, messages);
+    attempt = await callDeepSeek(
+      deepseekApiKey,
+      prompt.model,
+      messages,
+      GRADER_MAX_TOKENS,
+      true,
+    );
   } catch (err) {
     const message = err instanceof Error ? err.message : "DeepSeek call failed";
     return NextResponse.json({ error: message }, { status: 502 });
@@ -684,10 +355,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   let inputTokens = attempt.inputTokens;
   let outputTokens = attempt.outputTokens;
-  let graderOutput = resolveGraderOutput(attempt, requiredCriteria);
+  let graderOutput = resolveGraderOutput(
+    attempt as DeepSeekSuccess,
+    requiredCriteria,
+  );
 
   if (!graderOutput) {
-    logParseFailure(1, attempt);
+    logParseFailure("grader", 1, attempt as DeepSeekSuccess);
     messages.push({
       role: "assistant",
       content: attempt.content || attempt.reasoningContent || "",
@@ -700,7 +374,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     let retry: DeepSeekResult;
     try {
-      retry = await callDeepSeek(deepseekApiKey, prompt.model, messages);
+      retry = await callDeepSeek(
+        deepseekApiKey,
+        prompt.model,
+        messages,
+        GRADER_MAX_TOKENS,
+        true,
+      );
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "DeepSeek call failed";
@@ -716,10 +396,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     inputTokens += retry.inputTokens;
     outputTokens += retry.outputTokens;
-    graderOutput = resolveGraderOutput(retry, requiredCriteria);
+    graderOutput = resolveGraderOutput(
+      retry as DeepSeekSuccess,
+      requiredCriteria,
+    );
 
     if (!graderOutput) {
-      logParseFailure(2, retry);
+      logParseFailure("grader", 2, retry as DeepSeekSuccess);
     }
   }
 
@@ -768,41 +451,36 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const passed = recomputedTotal >= rubricRow.pass_threshold && !hardFailReason;
 
-  const { data: insertedGrade, error: insertError } = await supabaseAdmin
-    .from("grades")
-    .insert({
-      draft_id: draftRow.id,
-      scores: graderOutput.scores,
-      weighted_total: recomputedTotal,
-      passed,
-      hard_fail_reason: hardFailReason,
-      issues: graderOutput.issues,
-      verdict_summary: graderOutput.verdict_summary,
-      rubric_id: rubricRow.id,
-      prompt_id: prompt.id,
-      model: prompt.model,
-      input_tokens: inputTokens,
-      output_tokens: outputTokens,
-      cost_cl: null,
-    })
-    .select("id")
-    .single();
+  const gradeResult = await insertGrade(supabaseAdmin, {
+    draft_id: draftRow.id,
+    scores: graderOutput.scores,
+    weighted_total: recomputedTotal,
+    passed,
+    hard_fail_reason: hardFailReason,
+    issues: graderOutput.issues,
+    verdict_summary: graderOutput.verdict_summary,
+    rubric_id: rubricRow.id,
+    prompt_id: prompt.id,
+    model: prompt.model,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+  });
 
-  if (insertError) {
-    if (insertError.code === "23505") {
+  if ("errorMessage" in gradeResult) {
+    if (gradeResult.code === "23505") {
       return NextResponse.json(
         { error: "Draft already graded" },
         { status: 409 },
       );
     }
     return NextResponse.json(
-      { error: `Could not save grade: ${insertError.message}` },
+      { error: `Could not save grade: ${gradeResult.errorMessage}` },
       { status: 500 },
     );
   }
 
   return NextResponse.json({
-    grade_id: insertedGrade.id as string,
+    grade_id: gradeResult.id,
     weighted_total: recomputedTotal,
     passed,
     issue_count: graderOutput.issues.length,
