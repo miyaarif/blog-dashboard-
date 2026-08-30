@@ -595,3 +595,76 @@ export async function insertGrade(
   if (error) return { errorMessage: error.message, code: error.code };
   return { id: data.id as string };
 }
+
+// ------------------------------------------------------------
+// Phase 6 — n8n webhook notification
+// ------------------------------------------------------------
+// Fires a POST to N8N_WEBHOOK_URL with the loop run's outcome, so n8n can
+// route on outcome and notify Telegram. Never throws — a notification
+// failure must not break the pipeline response. Does nothing (silently)
+// if N8N_WEBHOOK_URL isn't set, so this is safe to call unconditionally
+// before that env var exists.
+//
+// Optional N8N_WEBHOOK_SECRET is sent as a header, mirroring the
+// x-pipeline-secret pattern, so the webhook can reject requests that
+// didn't come from this app. No secrets are ever put in the payload body.
+export interface LoopRunNotification {
+  loop_run_id: string;
+  article_id: string;
+  site_id: string;
+  site_name: string;
+  title: string;
+  outcome: "passed" | "failed_after_retries" | "error";
+  attempts_used: number;
+  first_score: number | null;
+  final_score: number | null;
+  best_draft_id: string | null;
+  error_detail: string | null;
+}
+
+const N8N_WEBHOOK_TIMEOUT_MS = 10_000;
+
+export async function notifyN8n(
+  notification: LoopRunNotification,
+): Promise<void> {
+  const webhookUrl = process.env.N8N_WEBHOOK_URL;
+  if (!webhookUrl) {
+    return;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    N8N_WEBHOOK_TIMEOUT_MS,
+  );
+
+  try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    const webhookSecret = process.env.N8N_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      headers["x-webhook-secret"] = webhookSecret;
+    }
+
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(notification),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      console.warn(
+        `n8n webhook returned ${res.status} for loop_run ${notification.loop_run_id}`,
+      );
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "unknown error";
+    console.warn(
+      `n8n webhook call failed for loop_run ${notification.loop_run_id}: ${message}`,
+    );
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}

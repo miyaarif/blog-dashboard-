@@ -35,6 +35,7 @@ import {
   insertArticleBrands,
   insertDraft,
   insertGrade,
+  notifyN8n,
 } from "@/lib/pipelineShared";
 
 const MAX_ATTEMPTS = 3;
@@ -865,6 +866,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       `Could not save loop_runs row for article ${article.id}: ${loopRunError.message}`,
     );
   }
+
+  // ---- Phase 6: notify n8n so it can route on outcome and message Telegram ----
+  // Does nothing if N8N_WEBHOOK_URL isn't set yet. Never blocks or fails this
+  // response — a notification problem is not a pipeline problem.
+  await notifyN8n({
+    loop_run_id: loopRunId,
+    article_id: article.id,
+    site_id: siteRow.id,
+    site_name: siteRow.name,
+    title: input.title,
+    outcome,
+    attempts_used: attemptsUsed,
+    first_score: firstScore,
+    final_score: best?.weightedTotal ?? null,
+    best_draft_id: best?.draftId ?? null,
+    error_detail: errorDetail,
+  });
 
   if (outcome === "error") {
     return NextResponse.json(
