@@ -470,11 +470,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     .maybeSingle();
 
   if (siteError) {
-    // TEMP DEBUG — remove `detail` once the production 500 root cause is found.
-    return NextResponse.json(
-      { error: "Could not load site", detail: siteError.message },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Could not load site" }, { status: 500 });
   }
   if (!site) {
     return NextResponse.json({ error: "Unknown site_id" }, { status: 404 });
