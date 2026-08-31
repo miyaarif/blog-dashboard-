@@ -17,7 +17,12 @@ export interface StatusBySite {
 export function countsByStatusPerSite(articles: Article[]): StatusBySite[] {
   const bySite = new Map<string, Record<string, number>>();
 
-  for (const a of articles) {
+  // rejected is a dead end, not forward pipeline progress — excluded here,
+  // not just left out of STATUS_ORDER, so it can't inflate the chart's
+  // Y-axis scale via Object.values(counts) even while staying undrawn.
+  const forwardArticles = articles.filter((a) => a.status !== "rejected");
+
+  for (const a of forwardArticles) {
     if (!bySite.has(a.site_id)) {
       const empty: Record<string, number> = {};
       for (const s of STATUS_ORDER) empty[s] = 0;
