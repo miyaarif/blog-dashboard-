@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const LOAD_TIMEOUT_MS = 6000;
 
 interface HeroImageProps {
   src: string | null;
@@ -17,7 +19,19 @@ interface HeroImageProps {
 // Plain <img>, not next/image — hero_image_url points at external, often
 // unconfigured domains, and this only needs a runtime failure fallback,
 // not responsive srcset generation.
-export default function HeroImage({
+//
+// onError alone isn't enough: some hosts (seen with picsum.photos here)
+// accept the connection and then never respond at all, rather than
+// failing cleanly. That never fires 'error' — the <img> just sits pending
+// forever. A load timeout catches that case too, not just clean failures.
+//
+// Keyed by src so a changed src remounts a fresh instance (fresh failed
+// state, fresh timeout) instead of resetting state inside an effect.
+export default function HeroImage(props: HeroImageProps) {
+  return <HeroImageForSrc key={props.src ?? "none"} {...props} />;
+}
+
+function HeroImageForSrc({
   src,
   alt,
   className,
@@ -25,6 +39,17 @@ export default function HeroImage({
   fallback = "box",
 }: HeroImageProps) {
   const [failed, setFailed] = useState(false);
+  const loadedRef = useRef(false);
+
+  useEffect(() => {
+    if (!src) return;
+
+    const timeoutId = setTimeout(() => {
+      if (!loadedRef.current) setFailed(true);
+    }, LOAD_TIMEOUT_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [src]);
 
   if (!src || failed) {
     if (fallback === "hidden") return null;
@@ -33,6 +58,14 @@ export default function HeroImage({
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      onLoad={() => {
+        loadedRef.current = true;
+      }}
+      onError={() => setFailed(true)}
+    />
   );
 }
