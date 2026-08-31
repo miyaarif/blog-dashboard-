@@ -14,6 +14,7 @@ const STATUS_OPTIONS = [
   "needs_review",
   "scheduled",
   "published",
+  "rejected",
 ];
 
 function formatDateLabel(iso: string): string {

@@ -10,6 +10,8 @@ const LINKS = [
   { href: "/articles", label: "Articles" },
   { href: "/calendar", label: "Calendar" },
   { href: "/keywords", label: "Keywords" },
+  { href: "/create", label: "Create" },
+  { href: "/review-queue", label: "Review queue" },
 ];
 
 export default function Nav() {

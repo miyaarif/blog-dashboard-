@@ -162,7 +162,7 @@ export const DEEPSEEK_TIMEOUT_MS = 120_000;
 // of final JSON. deepseek-reasoner spends part of this same budget on
 // reasoning_content before it ever writes the answer, so the ceiling has
 // to cover reasoning + the final JSON, not just the JSON alone.
-export const GRADER_MAX_TOKENS = 8000;
+export const GRADER_MAX_TOKENS = 20000;
 export const WRITER_MAX_TOKENS = 4000;
 
 export interface ChatMessage {

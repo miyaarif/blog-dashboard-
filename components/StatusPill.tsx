@@ -5,6 +5,7 @@ const STATUS_STYLES: Record<string, string> = {
   needs_review: "bg-red-50 text-red-700",
   scheduled: "bg-indigo-50 text-indigo-700",
   published: "bg-emerald-50 text-emerald-700",
+  rejected: "bg-gray-200 text-gray-700",
 };
 
 const STATUS_LABELS: Record<string, string> = {
@@ -14,6 +15,7 @@ const STATUS_LABELS: Record<string, string> = {
   needs_review: "Needs review",
   scheduled: "Scheduled",
   published: "Published",
+  rejected: "Rejected",
 };
 
 export default function StatusPill({ status }: { status: string }) {

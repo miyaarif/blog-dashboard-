@@ -41,6 +41,17 @@ export async function getArticleById(
   return (data as Article) ?? undefined;
 }
 
+export async function getArticlesByStatus(
+  status: Article["status"],
+): Promise<Article[]> {
+  const { data, error } = await supabase
+    .from("articles")
+    .select("*")
+    .eq("status", status);
+  if (error) throw error;
+  return data as Article[];
+}
+
 export async function getArticlesBySite(siteId: string): Promise<Article[]> {
   const { data, error } = await supabase
     .from("articles")
