@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import { getArticleById, getSiteById } from "@/lib/sites";
 import SiteBadge from "@/components/SiteBadge";
 import StatusPill from "@/components/StatusPill";
+import HeroImage from "@/components/HeroImage";
 import { PencilIcon } from "@/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -32,14 +33,12 @@ export default async function ArticleReadPage({
         ← Back to articles
       </Link>
 
-      {article.hero_image_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={article.hero_image_url}
-          alt={article.hero_image_alt ?? ""}
-          className="mt-4 aspect-[1200/630] w-full rounded-lg border border-gray-200 object-cover"
-        />
-      )}
+      <HeroImage
+        src={article.hero_image_url}
+        alt={article.hero_image_alt ?? ""}
+        className="mt-4 aspect-[1200/630] w-full rounded-lg border border-gray-200 object-cover"
+        fallback="hidden"
+      />
 
       <div className="mt-4 flex items-start justify-between gap-4">
         <div>

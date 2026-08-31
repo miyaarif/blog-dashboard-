@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import SiteBadge from "@/components/SiteBadge";
 import StatusPill from "@/components/StatusPill";
+import HeroImage from "@/components/HeroImage";
 import { EyeIcon, PencilIcon } from "@/components/icons";
 import type { Article, Site } from "@/types";
 
@@ -200,16 +201,12 @@ export default function ArticlesTable({
                     className="border-b border-gray-100 last:border-0 hover:bg-gray-50"
                   >
                     <td className="px-4 py-3">
-                      {a.hero_image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={a.hero_image_url}
-                          alt={a.hero_image_alt ?? ""}
-                          className="h-10 w-14 rounded object-cover"
-                        />
-                      ) : (
-                        <div className="h-10 w-14 rounded bg-gray-100" />
-                      )}
+                      <HeroImage
+                        src={a.hero_image_url}
+                        alt={a.hero_image_alt ?? ""}
+                        className="h-10 w-14 rounded object-cover"
+                        fallbackClassName="h-10 w-14 rounded bg-gray-100"
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <Link
@@ -269,16 +266,12 @@ export default function ArticlesTable({
           const site = sites.find((s) => s.id === a.site_id);
           return (
             <div key={a.id} className="flex gap-3 p-4">
-              {a.hero_image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={a.hero_image_url}
-                  alt={a.hero_image_alt ?? ""}
-                  className="h-14 w-20 shrink-0 rounded object-cover"
-                />
-              ) : (
-                <div className="h-14 w-20 shrink-0 rounded bg-gray-100" />
-              )}
+              <HeroImage
+                src={a.hero_image_url}
+                alt={a.hero_image_alt ?? ""}
+                className="h-14 w-20 shrink-0 rounded object-cover"
+                fallbackClassName="h-14 w-20 shrink-0 rounded bg-gray-100"
+              />
               <div className="min-w-0 flex-1">
                 <Link
                   href={`/articles/${a.id}`}
