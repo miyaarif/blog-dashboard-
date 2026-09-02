@@ -157,7 +157,7 @@ export function daysSince(
 // DeepSeek — OpenAI-compatible chat completions
 // ------------------------------------------------------------
 export const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
-export const DEEPSEEK_TIMEOUT_MS = 120_000;
+export const DEEPSEEK_TIMEOUT_MS = 300_000;
 // A full grade (scores + one issue per weak criterion) needs ~3000 tokens
 // of final JSON. deepseek-reasoner spends part of this same budget on
 // reasoning_content before it ever writes the answer, so the ceiling has
