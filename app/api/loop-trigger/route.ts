@@ -1,6 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Agent, fetch as undiciFetch } from "undici";
 
 export const dynamic = "force-dynamic";
+
+// The loop can make up to ~12 sequential DeepSeek calls across 3 attempts
+// (writer/reviser + grader, each with one retry), each with its own 300s
+// ceiling per lib/pipelineShared.ts's DEEPSEEK_TIMEOUT_MS — so this
+// internal call can genuinely run past undici's default 300s
+// headersTimeout/bodyTimeout. A plain AbortController signal on the fetch
+// call can't override those defaults — they're a separate undici-level
+// setting — so this uses a per-request dispatcher instead. Confirmed
+// necessary: a real run without this returned "fetch failed" at ~304s
+// even though /api/loop-run kept running server-side and completed
+// successfully about two minutes later.
+//
+// Uses undici's own fetch(), not the global one: Node vendors its own
+// internal copy of undici for global fetch, and passing an Agent from the
+// separately-installed undici package to the global fetch fails with
+// "invalid onRequestStart method" (UND_ERR_INVALID_ARG) — a version
+// mismatch between the two. Confirmed by reproducing it in isolation.
+// The Agent and the fetch call need to come from the same undici instance.
+const LOOP_RUN_DISPATCHER = new Agent({
+  headersTimeout: 3_600_000,
+  bodyTimeout: 3_600_000,
+});
 
 interface LoopTriggerBody {
   site_id: string;
@@ -96,15 +119,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const loopRunUrl = new URL("/api/loop-run", request.nextUrl.origin);
 
-  let response: Response;
+  let response: Awaited<ReturnType<typeof undiciFetch>>;
   try {
-    response = await fetch(loopRunUrl, {
+    response = await undiciFetch(loopRunUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-pipeline-secret": pipelineSecret,
       },
       body: JSON.stringify(input),
+      dispatcher: LOOP_RUN_DISPATCHER,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not reach the loop-run route";
