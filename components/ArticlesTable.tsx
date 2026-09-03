@@ -151,7 +151,7 @@ export default function ArticlesTable({
         <select
           value={siteFilter}
           onChange={(e) => setSiteFilter(e.target.value)}
-          className="w-full rounded-md border border-line px-3 py-1.5 text-sm text-ink focus:border-line focus:outline-none sm:w-auto"
+          className="w-full rounded-md border border-line bg-card px-3 py-1.5 text-sm text-ink focus:border-line focus:outline-none sm:w-auto"
         >
           <option value="all">All sites</option>
           {sites.map((s) => (
@@ -164,7 +164,7 @@ export default function ArticlesTable({
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full rounded-md border border-line px-3 py-1.5 text-sm text-ink focus:border-line focus:outline-none sm:w-auto"
+          className="w-full rounded-md border border-line bg-card px-3 py-1.5 text-sm text-ink focus:border-line focus:outline-none sm:w-auto"
         >
           <option value="all">All statuses</option>
           {STATUS_OPTIONS.map((s) => (

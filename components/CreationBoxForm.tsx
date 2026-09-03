@@ -13,7 +13,7 @@ const INTENT_OPTIONS = [
 ];
 
 const inputClass =
-  "block w-full rounded-md border border-line px-3 py-1.5 text-sm text-ink focus:border-line focus:outline-none";
+  "block w-full rounded-md border border-line bg-card px-3 py-1.5 text-sm text-ink focus:border-line focus:outline-none";
 const labelClass = "block text-sm font-medium text-ink";
 
 interface LoopTriggerResult {
