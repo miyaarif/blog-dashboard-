@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MenuIcon, CloseIcon } from "@/components/icons";
+import { MenuIcon, CloseIcon, ChevronDownIcon } from "@/components/icons";
+import type { Site } from "@/types";
 
 const LINKS = [
   { href: "/", label: "Overview" },
@@ -14,13 +15,33 @@ const LINKS = [
   { href: "/review-queue", label: "Review queue" },
 ];
 
-export default function Nav() {
+export default function Nav({ sites }: { sites: Site[] }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [blogMenuOpen, setBlogMenuOpen] = useState(false);
+  const blogMenuRef = useRef<HTMLDivElement>(null);
 
   function isActive(href: string) {
     return href === "/" ? pathname === "/" : pathname.startsWith(href);
   }
+
+  const isBlogActive = pathname.startsWith("/blog");
+
+  // Real sites, not a hardcoded list — a new site added to the sites
+  // table shows up here without a code change.
+  useEffect(() => {
+    if (!blogMenuOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        blogMenuRef.current &&
+        !blogMenuRef.current.contains(event.target as Node)
+      ) {
+        setBlogMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [blogMenuOpen]);
 
   return (
     <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/80 backdrop-blur">
@@ -50,6 +71,44 @@ export default function Nav() {
               {link.label}
             </Link>
           ))}
+
+          {sites.length > 0 && (
+            <div className="relative" ref={blogMenuRef}>
+              <button
+                type="button"
+                onClick={() => setBlogMenuOpen((v) => !v)}
+                aria-expanded={blogMenuOpen}
+                aria-haspopup="menu"
+                className={`flex items-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  isBlogActive
+                    ? "bg-gray-900 text-white"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+              >
+                Blog
+                <ChevronDownIcon className="h-3.5 w-3.5" />
+              </button>
+
+              {blogMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 z-30 mt-1 w-48 rounded-md border border-gray-200 bg-white py-1 shadow-lg"
+                >
+                  {sites.map((site) => (
+                    <Link
+                      key={site.id}
+                      href={`/blog?site=${site.id}`}
+                      role="menuitem"
+                      onClick={() => setBlogMenuOpen(false)}
+                      className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                    >
+                      {site.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </nav>
 
         <button
@@ -82,6 +141,28 @@ export default function Nav() {
               {link.label}
             </Link>
           ))}
+
+          {sites.length > 0 && (
+            <>
+              <div className="mt-2 px-3 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                Blog
+              </div>
+              {sites.map((site) => (
+                <Link
+                  key={site.id}
+                  href={`/blog?site=${site.id}`}
+                  onClick={() => setOpen(false)}
+                  className={`rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                    isActive("/blog")
+                      ? "bg-gray-900 text-white"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  }`}
+                >
+                  {site.name}
+                </Link>
+              ))}
+            </>
+          )}
         </nav>
       )}
     </header>

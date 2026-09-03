@@ -61,6 +61,20 @@ export function CloseIcon({ className }: { className?: string }) {
   );
 }
 
+export function ChevronDownIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      className={className}
+    >
+      <path d="M5 7.5l5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function SearchIcon({ className }: { className?: string }) {
   return (
     <svg
