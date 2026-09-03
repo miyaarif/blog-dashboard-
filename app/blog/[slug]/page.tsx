@@ -53,7 +53,9 @@ export default async function BlogArticlePage({
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <h1 className="text-3xl font-bold text-gray-900">{article.title}</h1>
+          <h1 className="text-[28px] leading-[1.2] font-bold text-[#0F172A] sm:text-[32px]">
+            {article.title}
+          </h1>
 
           <div className="mt-4">
             <AuthorByline

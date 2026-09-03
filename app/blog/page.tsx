@@ -53,7 +53,7 @@ export default async function BlogListingPage({
         <span className="text-gray-900">Blog</span>
       </nav>
 
-      <h1 className="mt-2 text-3xl font-bold text-gray-900">
+      <h1 className="mt-2 text-[28px] leading-[1.2] font-bold text-[#0F172A] sm:text-[32px]">
         {site.name} Blog
       </h1>
 

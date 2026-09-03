@@ -20,8 +20,11 @@ export default function ArticleListItem({ article }: { article: Article }) {
         />
       </Link>
       <div className="min-w-0 flex-1">
-        <h3 className="text-lg font-semibold text-gray-900">
-          <Link href={`/blog/${article.slug}`} className="hover:underline">
+        <h3 className="text-[15px] leading-[1.4] font-semibold text-[#1E293B] sm:text-base">
+          <Link
+            href={`/blog/${article.slug}`}
+            className="transition-colors hover:text-[#2563EB] hover:underline"
+          >
             {article.title}
           </Link>
         </h3>

@@ -50,7 +50,7 @@ export default function AuthorByline({
             <span className="text-gray-500">, {credentials}</span>
           )}
         </div>
-        <div className="text-gray-500">
+        <div className="text-[13px] font-normal text-[#64748B] sm:text-sm">
           {lastUpdated && <span>Last updated: {lastUpdated}</span>}
           {reviewedBy && (
             <span>
