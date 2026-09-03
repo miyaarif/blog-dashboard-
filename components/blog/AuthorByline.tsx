@@ -44,13 +44,13 @@ export default function AuthorByline({
         {getInitials(displayName)}
       </div>
       <div className="text-sm">
-        <div className="font-medium text-gray-900">
+        <div className="font-medium text-ink">
           {displayName}
           {credentials.length > 0 && (
-            <span className="text-gray-500">, {credentials}</span>
+            <span className="text-muted">, {credentials}</span>
           )}
         </div>
-        <div className="text-[13px] font-normal text-[#64748B] sm:text-sm">
+        <div className="text-[13px] font-normal text-muted sm:text-sm">
           {lastUpdated && <span>Last updated: {lastUpdated}</span>}
           {reviewedBy && (
             <span>

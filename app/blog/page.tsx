@@ -45,15 +45,15 @@ export default async function BlogListingPage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <nav className="text-sm text-gray-500">
-        <Link href="/" className="hover:text-gray-900">
+      <nav className="text-sm text-muted">
+        <Link href="/" className="hover:text-ink">
           Home
         </Link>
         <span className="mx-1.5">/</span>
-        <span className="text-gray-900">Blog</span>
+        <span className="text-ink">Blog</span>
       </nav>
 
-      <h1 className="mt-2 text-[28px] leading-[1.2] font-bold text-[#0F172A] sm:text-[32px]">
+      <h1 className="mt-2 text-[28px] leading-[1.2] font-bold text-ink sm:text-[32px]">
         {site.name} Blog
       </h1>
 
@@ -61,12 +61,12 @@ export default async function BlogListingPage({
         <div className="lg:col-span-2">
           <FeaturedCarousel articles={featured} accentColour={site.primary_colour} />
 
-          <h2 className="mt-10 text-xl font-bold text-gray-900">
+          <h2 className="mt-10 text-xl font-bold text-ink">
             Latest Blog Posts
           </h2>
           <div className="mt-4">
             {articles.length === 0 ? (
-              <p className="text-sm text-gray-500">No published articles yet.</p>
+              <p className="text-sm text-muted">No published articles yet.</p>
             ) : (
               articles.map((article) => (
                 <ArticleListItem key={article.id} article={article} />
@@ -78,15 +78,15 @@ export default async function BlogListingPage({
         </div>
 
         <aside className="space-y-6">
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="text-sm font-semibold text-gray-900">Our Blog</div>
+          <div className="rounded-lg border border-line bg-card p-4">
+            <div className="text-sm font-semibold text-ink">Our Blog</div>
             <div
               className="mt-1 text-2xl font-bold"
               style={{ color: site.primary_colour }}
             >
               {publishedCount}
             </div>
-            <div className="text-sm text-gray-500">published articles</div>
+            <div className="text-sm text-muted">published articles</div>
           </div>
 
           <BestDealsWidget deals={deals} />

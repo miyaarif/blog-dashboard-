@@ -8,8 +8,8 @@ export default function BestDealsWidget({ deals }: { deals: BrandDeal[] }) {
   if (deals.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <div className="mb-3 text-sm font-semibold text-gray-900">Best deals</div>
+    <div className="rounded-lg border border-line bg-card p-4">
+      <div className="mb-3 text-sm font-semibold text-ink">Best deals</div>
       <ul className="space-y-3">
         {deals.map((deal) => (
           <li key={deal.brandId} className="flex items-center gap-3">
@@ -20,10 +20,10 @@ export default function BestDealsWidget({ deals }: { deals: BrandDeal[] }) {
               className="h-8 w-8 shrink-0 rounded object-contain"
             />
             <div className="min-w-0 flex-1 text-sm">
-              <div className="truncate font-medium text-gray-900">
+              <div className="truncate font-medium text-ink">
                 {deal.brandName}
               </div>
-              <div className="text-gray-500">{deal.discountPercent}% off</div>
+              <div className="text-muted">{deal.discountPercent}% off</div>
             </div>
             <a
               href={deal.ctaLink}

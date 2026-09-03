@@ -40,7 +40,7 @@ export default function CalloutBox({
 }: CalloutBoxProps) {
   return (
     <div
-      className="rounded-lg bg-gray-50 p-5"
+      className="rounded-lg bg-card p-5"
       style={{ borderBottom: `3px solid ${accentColour}` }}
     >
       <div
@@ -50,7 +50,7 @@ export default function CalloutBox({
         <CalloutIcon variant={variant} />
         {VARIANT_TITLE[variant]}
       </div>
-      <div className="prose prose-sm max-w-none text-gray-700">
+      <div className="prose prose-sm max-w-none text-ink dark:prose-invert">
         {children}
       </div>
     </div>

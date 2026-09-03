@@ -41,19 +41,19 @@ export default async function BlogArticlePage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <nav className="text-sm text-gray-500">
-        <Link href="/" className="hover:text-gray-900">
+      <nav className="text-sm text-muted">
+        <Link href="/" className="hover:text-ink">
           Home
         </Link>
         <span className="mx-1.5">/</span>
-        <Link href={`/blog?site=${site.id}`} className="hover:text-gray-900">
+        <Link href={`/blog?site=${site.id}`} className="hover:text-ink">
           Blog
         </Link>
       </nav>
 
       <div className="mt-8 grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="lg:col-span-2">
-          <h1 className="text-[28px] leading-[1.2] font-bold text-[#0F172A] sm:text-[32px]">
+          <h1 className="text-[28px] leading-[1.2] font-bold text-ink sm:text-[32px]">
             {article.title}
           </h1>
 
@@ -71,10 +71,10 @@ export default async function BlogArticlePage({
             src={article.hero_image_url}
             alt={article.hero_image_alt ?? ""}
             className="mt-6 aspect-[1200/630] w-full rounded-lg object-cover"
-            fallbackClassName="mt-6 aspect-[1200/630] w-full rounded-lg bg-gray-100"
+            fallbackClassName="mt-6 aspect-[1200/630] w-full rounded-lg bg-gray-100 dark:bg-gray-800"
           />
 
-          <div className="prose prose-sm mt-6 max-w-none">
+          <div className="prose prose-sm mt-6 max-w-none dark:prose-invert">
             {hasStructuredOpening && quickAnswer ? (
               <CalloutBox variant="quick-answer" accentColour={site.primary_colour}>
                 <ArticleMarkdown>{quickAnswer}</ArticleMarkdown>
@@ -96,7 +96,7 @@ export default async function BlogArticlePage({
             </div>
           )}
 
-          <div className="prose prose-sm mt-6 max-w-none">
+          <div className="prose prose-sm mt-6 max-w-none dark:prose-invert">
             {sections.map((section) => (
               <div key={`${section.level}-${section.heading}`}>
                 <ArticleMarkdown>{`${"#".repeat(section.level)} ${section.heading}\n\n${section.content}`}</ArticleMarkdown>
@@ -105,9 +105,9 @@ export default async function BlogArticlePage({
           </div>
 
           {deal && (
-            <div className="mt-8 rounded-lg border border-gray-200 bg-white p-5">
-              <div className="text-sm font-semibold text-gray-900">Our choice</div>
-              <div className="mt-2 text-lg font-bold">{deal.brandName}</div>
+            <div className="mt-8 rounded-lg border border-line bg-card p-5">
+              <div className="text-sm font-semibold text-ink">Our choice</div>
+              <div className="mt-2 text-lg font-bold text-ink">{deal.brandName}</div>
               <a
                 href={deal.ctaLink}
                 target="_blank"
@@ -121,7 +121,7 @@ export default async function BlogArticlePage({
           )}
 
           {faq && (
-            <div className="prose prose-sm mt-8 max-w-none">
+            <div className="prose prose-sm mt-8 max-w-none dark:prose-invert">
               <h2>FAQ</h2>
               <ArticleMarkdown>{faq}</ArticleMarkdown>
             </div>

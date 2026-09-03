@@ -11,8 +11,8 @@ export default function TableOfContents({
   if (sections.length === 0) return null;
 
   return (
-    <nav className="rounded-lg border border-gray-200 bg-white p-4 text-sm" aria-label="Table of contents">
-      <div className="mb-2 font-semibold text-gray-900">On this page</div>
+    <nav className="rounded-lg border border-line bg-card p-4 text-sm" aria-label="Table of contents">
+      <div className="mb-2 font-semibold text-ink">On this page</div>
       <ul className="space-y-1">
         {sections.map((section) => (
           <li
@@ -21,7 +21,7 @@ export default function TableOfContents({
           >
             <a
               href={`#${slugifyHeading(section.heading)}`}
-              className="text-gray-600 hover:text-gray-900 hover:underline"
+              className="text-muted hover:text-ink hover:underline"
             >
               {section.heading}
             </a>
