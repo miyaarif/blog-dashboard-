@@ -66,17 +66,49 @@ interface Week {
   count: number;
 }
 
+// Catmull-Rom -> cubic Bezier (tension 1/6) — the standard way to draw a
+// smooth curve through a set of points, rather than the straight-segment
+// polyline the Published chart still uses.
+function smoothPathD(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M${points[0].x},${points[0].y}`;
+  let d = `M${points[0].x},${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i === 0 ? 0 : i - 1];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C${cp1x},${cp1y} ${cp2x},${cp2y} ${p2.x},${p2.y}`;
+  }
+  return d;
+}
+
+function straightPathD(points: { x: number; y: number }[]): string {
+  if (points.length === 0) return "";
+  return points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ");
+}
+
 function AreaChart({
   weeks,
   color,
   noun,
+  smooth = false,
+  dashed = false,
+  showArea = true,
 }: {
   weeks: Week[];
   color: string;
   noun: string;
+  smooth?: boolean;
+  dashed?: boolean;
+  showArea?: boolean;
 }) {
   const gradientId = useId();
-  const pathRef = useRef<SVGPolylineElement>(null);
+  const pathRef = useRef<SVGPathElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   // The SVG scales to the container's real rendered width via its viewBox,
@@ -104,18 +136,22 @@ function AreaChart({
     return padTop + plotH - (v / max) * plotH;
   }
 
-  const linePoints = weeks.map((w, i) => `${xAt(i)},${yAt(w.count)}`).join(" ");
-  const areaPoints =
+  const points = weeks.map((w, i) => ({ x: xAt(i), y: yAt(w.count) }));
+  const lineD = smooth ? smoothPathD(points) : straightPathD(points);
+  const areaD =
     n > 0
-      ? `${padLeft},${padTop + plotH} ${linePoints} ${xAt(n - 1)},${padTop + plotH}`
+      ? `${lineD} L${xAt(n - 1)},${padTop + plotH} L${padLeft},${padTop + plotH} Z`
       : "";
 
   // Draw-in animation: measure the real path length once mounted, then
   // animate stroke-dashoffset from full length to 0 (the classic SVG
-  // "line drawing itself" technique) instead of a plain fade.
+  // "line drawing itself" technique) instead of a plain fade. Skipped for
+  // the dashed variant, which keeps its permanent dash pattern instead —
+  // combining a decorative dash with the reveal-dasharray trick fights
+  // over the same CSS property.
   useEffect(() => {
     const el = pathRef.current;
-    if (!el || n < 2) return;
+    if (!el || n < 2 || dashed) return;
     const length = el.getTotalLength();
     el.style.transition = "none";
     el.style.strokeDasharray = String(length);
@@ -128,7 +164,7 @@ function AreaChart({
       return () => cancelAnimationFrame(id2);
     });
     return () => cancelAnimationFrame(id1);
-  }, [n, weeks]);
+  }, [n, weeks, dashed]);
 
   function handleMove(e: React.MouseEvent) {
     if (n === 0) return;
@@ -212,15 +248,16 @@ function AreaChart({
           </g>
         ))}
 
-        <polygon points={areaPoints} fill={`url(#${gradientId})`} />
-        <polyline
+        {showArea && <path d={areaD} fill={`url(#${gradientId})`} />}
+        <path
           ref={pathRef}
-          points={linePoints}
+          d={lineD}
           fill="none"
           stroke={color}
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
+          strokeDasharray={dashed ? "6,4" : undefined}
         />
 
         {hoverIndex !== null && (
@@ -279,6 +316,9 @@ function TrendCard({
   color,
   periodIndex,
   onPeriodChange,
+  smooth,
+  dashed,
+  showArea,
 }: {
   label: string;
   noun: string;
@@ -286,6 +326,9 @@ function TrendCard({
   color: string;
   periodIndex: number;
   onPeriodChange: (index: number) => void;
+  smooth?: boolean;
+  dashed?: boolean;
+  showArea?: boolean;
 }) {
   const current = weeks.length > 0 ? weeks[weeks.length - 1].count : 0;
 
@@ -299,7 +342,14 @@ function TrendCard({
       </div>
       <p className="mt-1 text-2xl font-semibold text-ink">{current}</p>
       <p className="text-xs text-muted">this week &middot; hover the line for detail</p>
-      <AreaChart weeks={weeks} color={color} noun={noun} />
+      <AreaChart
+        weeks={weeks}
+        color={color}
+        noun={noun}
+        smooth={smooth}
+        dashed={dashed}
+        showArea={showArea}
+      />
     </div>
   );
 }
@@ -344,6 +394,9 @@ export default function CalendarTrendWidgets({ articles }: { articles: Article[]
         color={ROSE}
         periodIndex={collisionPeriod}
         onPeriodChange={setCollisionPeriod}
+        smooth
+        dashed
+        showArea={false}
       />
     </div>
   );
