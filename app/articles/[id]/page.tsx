@@ -89,7 +89,7 @@ export default async function ArticleReadPage({
         </div>
       </dl>
 
-      <article className="prose prose-sm mt-6 max-w-none rounded-lg border border-line bg-card p-6">
+      <article className="prose prose-sm mt-6 max-w-none rounded-lg border border-line bg-card p-6 dark:prose-invert">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {article.body_markdown}
         </ReactMarkdown>

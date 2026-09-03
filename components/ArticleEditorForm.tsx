@@ -352,7 +352,7 @@ export default function ArticleEditorForm({
               <span className="text-muted">Untitled article</span>
             )}
           </h2>
-          <div className="prose prose-sm mt-4 max-w-none">
+          <div className="prose prose-sm mt-4 max-w-none dark:prose-invert">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {article.body_markdown || "*Start writing to see a preview…*"}
             </ReactMarkdown>
