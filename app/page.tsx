@@ -149,6 +149,16 @@ export default async function Home() {
             </Link>
           );
         })}
+
+        <Link
+          href="/sites/new"
+          className="group flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-line p-5 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          <span className="text-xl leading-none" aria-hidden>
+            +
+          </span>
+          Add site
+        </Link>
       </div>
 
       <DashboardCharts sites={sites} articles={articles} />
