@@ -214,8 +214,8 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
                   y={y}
                   textAnchor="end"
                   dominantBaseline="middle"
-                  className="fill-muted"
-                  fontSize={10}
+                  className="fill-chart-label"
+                  fontSize={12}
                 >
                   {t}
                 </text>
@@ -282,8 +282,8 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
                   x={groupX + groupW / 2}
                   y={baseline + 16}
                   textAnchor="middle"
-                  className="fill-muted"
-                  fontSize={10}
+                  className="fill-chart-label"
+                  fontSize={12}
                 >
                   {STATUS_LABELS[status]}
                 </text>
@@ -419,8 +419,8 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
                   y={y}
                   textAnchor="end"
                   dominantBaseline="middle"
-                  className="fill-muted"
-                  fontSize={10}
+                  className="fill-chart-label"
+                  fontSize={12}
                 >
                   {t}
                 </text>
@@ -491,8 +491,8 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
                     x={slotX + slotW / 2}
                     y={baseline + 14}
                     textAnchor="middle"
-                    className="fill-muted"
-                    fontSize={9}
+                    className="fill-chart-label"
+                    fontSize={11}
                   >
                     {label}
                   </text>

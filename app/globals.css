@@ -24,6 +24,14 @@
   --color-accent: #2563eb;
   --color-accent-hover: #1d4ed8;
   --color-accent-soft: #eff6ff;
+  /* Small SVG chart text (axis ticks, category/date labels) needs more
+     contrast than --color-muted at that size — measured 4.76:1 for muted
+     on the light card, borderline for text this tiny, vs 6.92:1 in dark
+     mode with the same token (a real, measured asymmetry, not a guess —
+     it's why this only got reported as unreadable in light mode). This
+     token is darker in light mode for that reason; dark mode reuses the
+     same value as --color-muted since that one already reads fine. */
+  --color-chart-label: #475569;
 }
 
 :root {
@@ -40,6 +48,7 @@
   --color-accent: #3b82f6;
   --color-accent-hover: #60a5fa;
   --color-accent-soft: rgba(59, 130, 246, 0.15);
+  --color-chart-label: #94a3b8;
 }
 
 body {
