@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getArticles, getSites } from "@/lib/sites";
-import { collisionsPerWeek } from "@/lib/calendarStats";
-import { publishedPerWeek } from "@/lib/dashboardStats";
 import CalendarGrid from "@/components/CalendarGrid";
 import CalendarTrendWidgets from "@/components/CalendarTrendWidgets";
 
@@ -25,8 +23,6 @@ export default async function CalendarPage({
   if (!site) notFound();
 
   const siteArticles = allArticles.filter((a) => a.site_id === site.id);
-  const publishedWeeks = publishedPerWeek(siteArticles);
-  const collisionWeeks = collisionsPerWeek(siteArticles);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
@@ -59,10 +55,7 @@ export default async function CalendarPage({
       </div>
 
       <div className="mt-6">
-        <CalendarTrendWidgets
-          publishedWeeks={publishedWeeks}
-          collisionWeeks={collisionWeeks}
-        />
+        <CalendarTrendWidgets articles={siteArticles} />
       </div>
 
       <div className="mt-4">

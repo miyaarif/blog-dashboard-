@@ -26,6 +26,8 @@ function formatDateLabel(iso: string): string {
   });
 }
 
+type SortKey = "none" | "sessions_desc" | "sessions_asc";
+
 export default function ArticlesTable({
   sites,
   articles,
@@ -34,6 +36,7 @@ export default function ArticlesTable({
   initialFrom,
   initialTo,
   initialSearch,
+  initialSort,
 }: {
   sites: Site[];
   articles: Article[];
@@ -42,12 +45,16 @@ export default function ArticlesTable({
   initialFrom?: string;
   initialTo?: string;
   initialSearch?: string;
+  initialSort?: string;
 }) {
   const [siteFilter, setSiteFilter] = useState(initialSiteFilter ?? "all");
   const [statusFilter, setStatusFilter] = useState(initialStatusFilter ?? "all");
   const [search, setSearch] = useState(initialSearch ?? "");
   const [dateRange, setDateRange] = useState(
     initialFrom && initialTo ? { from: initialFrom, to: initialTo } : null,
+  );
+  const [sort, setSort] = useState<SortKey>(
+    initialSort === "sessions" ? "sessions_desc" : "none",
   );
 
   const filtered = articles.filter((a) => {
@@ -63,6 +70,20 @@ export default function ArticlesTable({
     }
     return true;
   });
+
+  if (sort !== "none") {
+    filtered.sort((a, b) =>
+      sort === "sessions_desc"
+        ? b.organic_sessions_30d - a.organic_sessions_30d
+        : a.organic_sessions_30d - b.organic_sessions_30d,
+    );
+  }
+
+  function toggleSessionsSort() {
+    setSort((prev) =>
+      prev === "sessions_desc" ? "sessions_asc" : "sessions_desc",
+    );
+  }
 
   function exportToCSV() {
     const headers = ["Title", "Site", "Status", "Word Count", "Sessions (30d)"];
@@ -188,6 +209,20 @@ export default function ArticlesTable({
                   Status
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted">
+                  <button
+                    type="button"
+                    onClick={toggleSessionsSort}
+                    className="inline-flex items-center gap-1 hover:text-ink"
+                  >
+                    Sessions (30d)
+                    {sort !== "none" && (
+                      <span aria-hidden>
+                        {sort === "sessions_desc" ? "↓" : "↑"}
+                      </span>
+                    )}
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted">
                   Actions
                 </th>
               </tr>
@@ -222,6 +257,9 @@ export default function ArticlesTable({
                     <td className="px-4 py-3">
                       <StatusPill status={a.status} />
                     </td>
+                    <td className="px-4 py-3 text-right text-ink">
+                      {a.organic_sessions_30d.toLocaleString()}
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1.5">
                         <Link
@@ -248,7 +286,7 @@ export default function ArticlesTable({
               {filtered.length === 0 && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-10 text-center text-sm text-muted"
                   >
                     No articles match these filters.
@@ -282,6 +320,9 @@ export default function ArticlesTable({
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   {site && <SiteBadge site={site} />}
                   <StatusPill status={a.status} />
+                  <span className="text-xs text-muted">
+                    {a.organic_sessions_30d.toLocaleString()} sessions/30d
+                  </span>
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   <Link

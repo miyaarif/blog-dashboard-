@@ -11,18 +11,30 @@ interface StatCardProps {
   label: string;
   value: number;
   sub: string;
+  href: string;
 }
 
-function StatCard({ icon, label, value, sub }: StatCardProps) {
+function StatCard({ icon, label, value, sub, href }: StatCardProps) {
   return (
-    <div className="rounded-xl border border-line bg-card p-5 shadow-sm">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft text-accent">
-        {icon}
+    <Link
+      href={href}
+      className="group rounded-xl border border-line bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft text-accent">
+          {icon}
+        </div>
+        <span
+          aria-hidden
+          className="text-muted opacity-0 transition-opacity group-hover:opacity-100"
+        >
+          →
+        </span>
       </div>
       <p className="mt-3 text-sm text-muted">{label}</p>
       <p className="mt-1 text-2xl font-semibold text-ink">{value}</p>
       <p className="mt-0.5 text-xs text-muted">{sub}</p>
-    </div>
+    </Link>
   );
 }
 
@@ -59,24 +71,28 @@ export default async function Home() {
           label="Total articles"
           value={articles.length}
           sub="across the network"
+          href="/articles"
         />
         <StatCard
           icon={<GlobeIcon className="h-5 w-5" />}
           label="Published"
           value={publishedCount}
           sub={`${sites.length} sites`}
+          href="/articles?status=published"
         />
         <StatCard
           icon={<TrendingUpIcon className="h-5 w-5" />}
           label="Organic sessions"
           value={totalSessions}
           sub="last 30 days"
+          href="/articles?sort=sessions"
         />
         <StatCard
           icon={<AlertIcon className="h-5 w-5" />}
           label="Needs review"
           value={needsReviewCount}
           sub="awaiting a decision"
+          href="/articles?status=needs_review"
         />
       </div>
 

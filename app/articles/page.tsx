@@ -12,10 +12,11 @@ export default async function ArticlesPage({
     from?: string;
     to?: string;
     search?: string;
+    sort?: string;
   }>;
 }) {
   const [sites, articles] = await Promise.all([getSites(), getArticles()]);
-  const { site, status, from, to, search } = await searchParams;
+  const { site, status, from, to, search, sort } = await searchParams;
 
   return (
     <ArticlesTable
@@ -26,6 +27,7 @@ export default async function ArticlesPage({
       initialFrom={from}
       initialTo={to}
       initialSearch={search}
+      initialSort={sort}
     />
   );
 }

@@ -1,11 +1,34 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
-import type { WeeklyPublishCount } from "@/lib/dashboardStats";
-import type { WeeklyCollisionCount } from "@/lib/calendarStats";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { publishedPerWeek } from "@/lib/dashboardStats";
+import { collisionsPerWeek } from "@/lib/calendarStats";
 import { clampTooltipX } from "@/lib/tooltipPosition";
+import type { Article } from "@/types";
 
 const TOOLTIP_MAX_WIDTH = 180;
+
+interface PeriodOption {
+  label: string;
+  months: number | null; // null = all time
+}
+
+const PERIOD_OPTIONS: PeriodOption[] = [
+  { label: "Last 3 months", months: 3 },
+  { label: "Last 6 months", months: 6 },
+  { label: "Last 12 months", months: 12 },
+  { label: "All time", months: null },
+];
+
+// Real cutoff date, not a guess — filters real articles by whichever date
+// field the caller cares about, so "Last 3 months" means the real last 3
+// months relative to today, every time this renders.
+function cutoffDate(months: number | null): Date | null {
+  if (months === null) return null;
+  const d = new Date();
+  d.setUTCMonth(d.getUTCMonth() - months);
+  return d;
+}
 
 // Palette.md categorical slots 4 (yellow/gold) and 5 (magenta/rose) — both
 // documented, both flagged sub-3:1 on a light surface, so neither widget
@@ -227,24 +250,53 @@ function AreaChart({
   );
 }
 
+function PeriodSelect({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (index: number) => void;
+}) {
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="rounded-md border border-line bg-card px-2 py-1 text-xs font-medium text-ink focus:border-accent focus:outline-none"
+    >
+      {PERIOD_OPTIONS.map((opt, i) => (
+        <option key={opt.label} value={i}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function TrendCard({
   label,
   noun,
   weeks,
   color,
+  periodIndex,
+  onPeriodChange,
 }: {
   label: string;
   noun: string;
   weeks: Week[];
   color: string;
+  periodIndex: number;
+  onPeriodChange: (index: number) => void;
 }) {
   const current = weeks.length > 0 ? weeks[weeks.length - 1].count : 0;
 
   return (
     <div className="rounded-lg border border-line bg-card p-4 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted">
-        {label}
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted">
+          {label}
+        </p>
+        <PeriodSelect value={periodIndex} onChange={onPeriodChange} />
+      </div>
       <p className="mt-1 text-2xl font-semibold text-ink">{current}</p>
       <p className="text-xs text-muted">this week &middot; hover the line for detail</p>
       <AreaChart weeks={weeks} color={color} noun={noun} />
@@ -252,17 +304,47 @@ function TrendCard({
   );
 }
 
-export default function CalendarTrendWidgets({
-  publishedWeeks,
-  collisionWeeks,
-}: {
-  publishedWeeks: WeeklyPublishCount[];
-  collisionWeeks: WeeklyCollisionCount[];
-}) {
+export default function CalendarTrendWidgets({ articles }: { articles: Article[] }) {
+  const [publishedPeriod, setPublishedPeriod] = useState(1); // default "Last 6 months"
+  const [collisionPeriod, setCollisionPeriod] = useState(1);
+
+  const publishedWeeks = useMemo(() => {
+    const cutoff = cutoffDate(PERIOD_OPTIONS[publishedPeriod].months);
+    const scoped = cutoff
+      ? articles.filter((a) => a.published_at && new Date(a.published_at) >= cutoff)
+      : articles;
+    return publishedPerWeek(scoped);
+  }, [articles, publishedPeriod]);
+
+  const collisionWeeks = useMemo(() => {
+    const cutoff = cutoffDate(PERIOD_OPTIONS[collisionPeriod].months);
+    const scoped = cutoff
+      ? articles.filter((a) => {
+          const d = a.scheduled_for || a.published_at;
+          return d && new Date(d) >= cutoff;
+        })
+      : articles;
+    return collisionsPerWeek(scoped);
+  }, [articles, collisionPeriod]);
+
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      <TrendCard label="Published" noun="published" weeks={publishedWeeks} color={GOLD} />
-      <TrendCard label="Collisions" noun="collisions" weeks={collisionWeeks} color={ROSE} />
+      <TrendCard
+        label="Published"
+        noun="published"
+        weeks={publishedWeeks}
+        color={GOLD}
+        periodIndex={publishedPeriod}
+        onPeriodChange={setPublishedPeriod}
+      />
+      <TrendCard
+        label="Collisions"
+        noun="collisions"
+        weeks={collisionWeeks}
+        color={ROSE}
+        periodIndex={collisionPeriod}
+        onPeriodChange={setCollisionPeriod}
+      />
     </div>
   );
 }
