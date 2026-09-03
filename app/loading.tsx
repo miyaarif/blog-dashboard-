@@ -15,7 +15,7 @@ export default function Loading() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-gray-200 bg-white p-5">
+          <div key={i} className="rounded-lg border border-line bg-card p-5">
             <div className="flex items-start justify-between">
               <Bar className="h-4 w-32" />
               <Bar className="h-5 w-20 rounded-full" />
@@ -28,7 +28,7 @@ export default function Loading() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-gray-200 bg-white p-5">
+          <div key={i} className="rounded-lg border border-line bg-card p-5">
             <Bar className="h-4 w-32" />
             <Bar className="mt-1 h-3 w-40" />
             <Bar className="mt-4 h-48 w-full" />

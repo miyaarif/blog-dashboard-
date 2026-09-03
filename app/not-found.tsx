@@ -70,10 +70,10 @@ export default function NotFound() {
       <div className="fade-in-up flex flex-col items-center">
         <LostIllustration />
 
-        <h1 className="mt-6 text-3xl font-bold text-gray-900">
+        <h1 className="mt-6 text-3xl font-bold text-ink">
           Oops! Looks like you&apos;re lost
         </h1>
-        <p className="mt-3 max-w-sm text-sm text-gray-500">
+        <p className="mt-3 max-w-sm text-sm text-muted">
           The page you are looking for doesn&apos;t exist, was moved, or the
           link might be broken.
         </p>
@@ -83,25 +83,25 @@ export default function NotFound() {
           method="GET"
           className="relative mt-8 w-full max-w-sm"
         >
-          <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
             type="text"
             name="search"
             placeholder="Search articles…"
-            className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-10 pr-4 text-sm text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-gray-400 focus:outline-none"
+            className="w-full rounded-lg border border-line bg-card py-2.5 pl-10 pr-4 text-sm text-ink shadow-sm placeholder:text-muted focus:border-line focus:outline-none"
           />
         </form>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
           >
             ← Return to Overview
           </Link>
           <Link
             href="/articles"
-            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-md border border-line bg-card px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-accent-soft"
           >
             View Articles
           </Link>
@@ -116,7 +116,7 @@ export default function NotFound() {
             <Link
               key={chip.href}
               href={chip.href}
-              className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900"
+              className="rounded-full border border-line bg-card px-3 py-1 text-xs font-medium text-muted transition-colors hover:bg-accent-soft hover:text-ink"
             >
               {chip.label}
             </Link>

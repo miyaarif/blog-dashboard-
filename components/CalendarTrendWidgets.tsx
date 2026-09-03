@@ -135,7 +135,7 @@ function AreaChart({
   const tooltipTop = hovered ? yAt(hovered.count) * pixelScale : 0;
 
   if (n === 0) {
-    return <p className="mt-6 text-center text-xs text-gray-400">No data yet.</p>;
+    return <p className="mt-6 text-center text-xs text-muted">No data yet.</p>;
   }
 
   return (
@@ -147,11 +147,11 @@ function AreaChart({
     >
       {hovered && (
         <div
-          className="pointer-events-none absolute z-10 max-w-[180px] -translate-x-1/2 -translate-y-full rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg"
+          className="pointer-events-none absolute z-10 max-w-[180px] -translate-x-1/2 -translate-y-full rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-gray-100 dark:text-gray-900"
           style={{ left: tooltipLeft, top: tooltipTop - 8 }}
         >
           <div className="font-semibold">Week of {formatWeekRange(hovered.weekStart)}</div>
-          <div className="text-gray-300">
+          <div className="text-gray-300 dark:text-gray-600">
             {hovered.count} {noun}
           </div>
         </div>
@@ -172,7 +172,7 @@ function AreaChart({
               x2={width - padRight}
               y1={yAt(t)}
               y2={yAt(t)}
-              stroke="#e1e0d9"
+              className="stroke-line"
               strokeWidth={1}
               opacity={0.6}
             />
@@ -181,7 +181,7 @@ function AreaChart({
               y={yAt(t)}
               textAnchor="end"
               dominantBaseline="middle"
-              className="fill-gray-400"
+              className="fill-muted"
               fontSize={9}
             >
               {t}
@@ -241,12 +241,12 @@ function TrendCard({
   const current = weeks.length > 0 ? weeks[weeks.length - 1].count : 0;
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+    <div className="rounded-lg border border-line bg-card p-4 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">
         {label}
       </p>
-      <p className="mt-1 text-2xl font-semibold text-gray-900">{current}</p>
-      <p className="text-xs text-gray-500">this week &middot; hover the line for detail</p>
+      <p className="mt-1 text-2xl font-semibold text-ink">{current}</p>
+      <p className="text-xs text-muted">this week &middot; hover the line for detail</p>
       <AreaChart weeks={weeks} color={color} noun={noun} />
     </div>
   );

@@ -13,7 +13,6 @@ import type { Article, Site } from "@/types";
 // Validated categorical palette (dataviz skill, references/palette.md) —
 // first 3 slots pass all-pairs CVD checks, safe for adjacent grouped bars.
 const SITE_COLORS = ["#2a78d6", "#eb6834", "#1baf7a"];
-const TREND_COLOR = "#2a78d6";
 const TOOLTIP_MAX_WIDTH = 220;
 
 const STATUS_LABELS: Record<string, string> = {
@@ -74,15 +73,15 @@ function ChartTooltip({ tooltip }: { tooltip: TooltipState | null }) {
   if (!tooltip) return null;
   return (
     <div
-      className="pointer-events-none absolute z-10 max-w-[220px] -translate-x-1/2 -translate-y-full rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg transition-[left,top] duration-100 ease-out"
+      className="pointer-events-none absolute z-10 max-w-[220px] -translate-x-1/2 -translate-y-full rounded-md bg-gray-900 px-2.5 py-1.5 text-xs font-medium text-white dark:bg-gray-100 dark:text-gray-900 shadow-lg transition-[left,top] duration-100 ease-out"
       style={{ left: tooltip.x, top: tooltip.y - 10 }}
     >
       {tooltip.lines.map((line, i) => (
-        <div key={i} className={i === 0 ? "font-semibold" : "text-gray-300"}>
+        <div key={i} className={i === 0 ? "font-semibold" : "text-gray-300 dark:text-gray-600"}>
           {line}
         </div>
       ))}
-      <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+      <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-100" />
     </div>
   );
 }
@@ -183,9 +182,9 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <p className="text-sm font-semibold text-gray-900">Pipeline by status</p>
-      <p className="mt-0.5 text-xs text-gray-500">
+    <div className="rounded-lg border border-line bg-card p-5">
+      <p className="text-sm font-semibold text-ink">Pipeline by status</p>
+      <p className="mt-0.5 text-xs text-muted">
         Articles per status, by site — click a legend item to toggle it
       </p>
 
@@ -206,7 +205,7 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
                   x2={width - padRight}
                   y1={y}
                   y2={y}
-                  stroke="#e1e0d9"
+                  className="stroke-line"
                   strokeWidth={1}
                   opacity={0.6}
                 />
@@ -215,7 +214,7 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
                   y={y}
                   textAnchor="end"
                   dominantBaseline="middle"
-                  className="fill-gray-400"
+                  className="fill-muted"
                   fontSize={10}
                 >
                   {t}
@@ -228,7 +227,7 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
             x2={width - padRight}
             y1={baseline}
             y2={baseline}
-            stroke="#c3c2b7"
+            className="stroke-line"
             strokeWidth={1}
             opacity={0.7}
           />
@@ -283,7 +282,7 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
                   x={groupX + groupW / 2}
                   y={baseline + 16}
                   textAnchor="middle"
-                  className="fill-gray-500"
+                  className="fill-muted"
                   fontSize={10}
                 >
                   {STATUS_LABELS[status]}
@@ -304,7 +303,7 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
               onClick={() => toggleSite(site.id)}
               onMouseEnter={() => setHoveredSite(site.id)}
               onMouseLeave={() => setHoveredSite(null)}
-              className="flex items-center gap-1.5 rounded px-1 py-0.5 text-xs transition-colors hover:bg-gray-50"
+              className="flex items-center gap-1.5 rounded px-1 py-0.5 text-xs transition-colors hover:bg-accent-soft"
               aria-pressed={!isHidden}
             >
               <span
@@ -316,7 +315,7 @@ function StatusBySiteChart({ sites, articles }: { sites: Site[]; articles: Artic
               />
               <span
                 className={
-                  isHidden ? "text-gray-400 line-through" : "text-gray-600"
+                  isHidden ? "text-muted line-through" : "text-muted"
                 }
               >
                 {site.name}
@@ -356,11 +355,11 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
 
   if (weeks.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-5">
-        <p className="text-sm font-semibold text-gray-900">
+      <div className="rounded-lg border border-line bg-card p-5">
+        <p className="text-sm font-semibold text-ink">
           Articles published per week
         </p>
-        <p className="mt-6 text-center text-sm text-gray-400">
+        <p className="mt-6 text-center text-sm text-muted">
           No published articles yet.
         </p>
       </div>
@@ -388,17 +387,17 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
   const labelEvery = Math.ceil(weeks.length / 8);
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <p className="text-sm font-semibold text-gray-900">
+    <div className="rounded-lg border border-line bg-card p-5">
+      <p className="text-sm font-semibold text-ink">
         Articles published per week
       </p>
-      <p className="mt-0.5 text-xs text-gray-500">Whole network, by publish date</p>
+      <p className="mt-0.5 text-xs text-muted">Whole network, by publish date</p>
 
       <div ref={containerRef} className="relative">
         <ChartTooltip tooltip={tooltip} />
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          className="mt-3 w-full"
+          className="mt-3 w-full text-accent"
           role="img"
           aria-label="Bar chart of articles published per week across the network"
         >
@@ -411,7 +410,7 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
                   x2={width - padRight}
                   y1={y}
                   y2={y}
-                  stroke="#e1e0d9"
+                  className="stroke-line"
                   strokeWidth={1}
                   opacity={0.6}
                 />
@@ -420,7 +419,7 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
                   y={y}
                   textAnchor="end"
                   dominantBaseline="middle"
-                  className="fill-gray-400"
+                  className="fill-muted"
                   fontSize={10}
                 >
                   {t}
@@ -433,7 +432,7 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
             x2={width - padRight}
             y1={baseline}
             y2={baseline}
-            stroke="#c3c2b7"
+            className="stroke-line"
             strokeWidth={1}
             opacity={0.7}
           />
@@ -459,7 +458,7 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
               <g key={w.weekStart}>
                 <AnimatedBar
                   d={barPath(x, barTop, barW, baseline, 4)}
-                  fill={TREND_COLOR}
+                  fill="currentColor"
                   mounted={mounted}
                   delayMs={i * 10}
                   opacity={1}
@@ -492,7 +491,7 @@ function WeeklyPublishedChart({ articles }: { articles: Article[] }) {
                     x={slotX + slotW / 2}
                     y={baseline + 14}
                     textAnchor="middle"
-                    className="fill-gray-500"
+                    className="fill-muted"
                     fontSize={9}
                   >
                     {label}

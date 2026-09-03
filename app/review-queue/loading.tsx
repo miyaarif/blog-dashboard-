@@ -8,7 +8,7 @@ export default function Loading() {
       <Bar className="h-7 w-40" />
       <Bar className="mt-2 h-4 w-56" />
 
-      <div className="mt-6 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
+      <div className="mt-6 divide-y divide-gray-100 rounded-lg border border-line bg-card">
         {[0, 1, 2].map((i) => (
           <div key={i} className="flex items-center justify-between gap-4 p-4">
             <div className="min-w-0 flex-1">

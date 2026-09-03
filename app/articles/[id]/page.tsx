@@ -28,7 +28,7 @@ export default async function ArticleReadPage({
     <div className="mx-auto max-w-3xl px-6 py-8">
       <Link
         href="/articles"
-        className="text-sm text-gray-500 hover:text-gray-900"
+        className="text-sm text-muted hover:text-ink"
       >
         ← Back to articles
       </Link>
@@ -36,7 +36,7 @@ export default async function ArticleReadPage({
       <HeroImage
         src={article.hero_image_url}
         alt={article.hero_image_alt ?? ""}
-        className="mt-4 aspect-[1200/630] w-full rounded-lg border border-gray-200 object-cover"
+        className="mt-4 aspect-[1200/630] w-full rounded-lg border border-line object-cover"
         fallback="hidden"
       />
 
@@ -46,50 +46,50 @@ export default async function ArticleReadPage({
             {site && <SiteBadge site={site} />}
             <StatusPill status={article.status} />
           </div>
-          <h1 className="mt-2 text-2xl font-semibold text-gray-900">
+          <h1 className="mt-2 text-2xl font-semibold text-ink">
             {article.title}
           </h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-muted">
             {article.meta_description}
           </p>
         </div>
         <Link
           href={`/editor/${article.id}`}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-accent-soft"
         >
           <PencilIcon className="h-3.5 w-3.5" />
           Edit
         </Link>
       </div>
 
-      <dl className="mt-6 grid grid-cols-2 gap-4 rounded-lg border border-gray-200 bg-white p-4 text-sm sm:grid-cols-4">
+      <dl className="mt-6 grid grid-cols-2 gap-4 rounded-lg border border-line bg-card p-4 text-sm sm:grid-cols-4">
         <div>
-          <dt className="text-gray-400">Author</dt>
-          <dd className="mt-0.5 font-medium text-gray-900">
+          <dt className="text-muted">Author</dt>
+          <dd className="mt-0.5 font-medium text-ink">
             {article.author_name}
           </dd>
         </div>
         <div>
-          <dt className="text-gray-400">Word count</dt>
-          <dd className="mt-0.5 font-medium text-gray-900">
+          <dt className="text-muted">Word count</dt>
+          <dd className="mt-0.5 font-medium text-ink">
             {article.word_count}
           </dd>
         </div>
         <div>
-          <dt className="text-gray-400">Sessions / 30d</dt>
-          <dd className="mt-0.5 font-medium text-gray-900">
+          <dt className="text-muted">Sessions / 30d</dt>
+          <dd className="mt-0.5 font-medium text-ink">
             {article.organic_sessions_30d}
           </dd>
         </div>
         <div>
-          <dt className="text-gray-400">Last updated</dt>
-          <dd className="mt-0.5 font-medium text-gray-900">
+          <dt className="text-muted">Last updated</dt>
+          <dd className="mt-0.5 font-medium text-ink">
             {article.last_updated?.split("T")[0] ?? "—"}
           </dd>
         </div>
       </dl>
 
-      <article className="prose prose-sm mt-6 max-w-none rounded-lg border border-gray-200 bg-white p-6">
+      <article className="prose prose-sm mt-6 max-w-none rounded-lg border border-line bg-card p-6">
         <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {article.body_markdown}
         </ReactMarkdown>

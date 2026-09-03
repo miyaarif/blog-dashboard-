@@ -15,7 +15,7 @@ export default function Error({
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 py-16 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-50 dark:bg-red-500/10">
         <svg
           viewBox="0 0 20 20"
           fill="none"
@@ -32,19 +32,19 @@ export default function Error({
           <circle cx="10" cy="14" r="0.7" fill="currentColor" stroke="none" />
         </svg>
       </div>
-      <h1 className="mt-4 text-xl font-semibold text-gray-900">
+      <h1 className="mt-4 text-xl font-semibold text-ink">
         Couldn&apos;t load this page
       </h1>
-      <p className="mt-2 text-sm text-gray-500">
+      <p className="mt-2 text-sm text-muted">
         Something went wrong reaching the database. This is usually
         temporary — try again in a moment.
       </p>
       {error.digest && (
-        <p className="mt-2 text-xs text-gray-300">Reference: {error.digest}</p>
+        <p className="mt-2 text-xs text-muted">Reference: {error.digest}</p>
       )}
       <button
         onClick={() => retry()}
-        className="mt-6 inline-flex items-center gap-1.5 rounded-md bg-gray-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+        className="mt-6 inline-flex items-center gap-1.5 rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
       >
         Retry connection
       </button>

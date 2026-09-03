@@ -17,7 +17,7 @@ export default async function SitePage({
   if (!site) {
     return (
       <div className="mx-auto max-w-5xl px-6 py-8">
-        <p className="text-sm text-gray-600">Site not found.</p>
+        <p className="text-sm text-muted">Site not found.</p>
       </div>
     );
   }
@@ -38,65 +38,65 @@ export default async function SitePage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-      <Link href="/" className="text-sm text-gray-500 hover:text-gray-900">
+      <Link href="/" className="text-sm text-muted hover:text-ink">
         ← Back to overview
       </Link>
 
       <div className="mt-4">
         <SiteBadge site={site} />
-        <h1 className="mt-2 text-2xl font-semibold text-gray-900">
+        <h1 className="mt-2 text-2xl font-semibold text-ink">
           {site.name}
         </h1>
-        <p className="mt-1 text-sm text-gray-500">{site.description}</p>
+        <p className="mt-1 text-sm text-muted">{site.description}</p>
       </div>
 
-      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-gray-500">
+      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted">
         Status breakdown
       </h2>
       <div className="mt-3 flex flex-wrap gap-2">
         {Object.entries(statusCounts).map(([status, count]) => (
           <div
             key={status}
-            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2"
+            className="flex items-center gap-2 rounded-lg border border-line bg-card px-3 py-2"
           >
             <StatusPill status={status} />
-            <span className="text-sm font-medium text-gray-900">{count}</span>
+            <span className="text-sm font-medium text-ink">{count}</span>
           </div>
         ))}
       </div>
 
-      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-gray-500">
+      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted">
         Top performers
       </h2>
-      <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className="mt-3 overflow-hidden rounded-lg border border-line bg-card">
         {topPerformers.map((a, i) => (
           <div
             key={a.id}
             className={`flex flex-col gap-2 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4 ${
-              i !== topPerformers.length - 1 ? "border-b border-gray-100" : ""
+              i !== topPerformers.length - 1 ? "border-b border-line" : ""
             }`}
           >
             <Link
               href={`/articles/${a.id}`}
-              className="font-medium text-gray-900 hover:underline"
+              className="font-medium text-ink hover:underline"
             >
               {a.title}
             </Link>
             <div className="flex shrink-0 items-center gap-3">
-              <span className="text-gray-500">
+              <span className="text-muted">
                 {a.organic_sessions_30d} sessions/30d
               </span>
               <Link
                 href={`/articles/${a.id}`}
                 title="Read article"
-                className="inline-flex items-center rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                className="inline-flex items-center rounded-md p-1.5 text-muted hover:bg-accent-soft hover:text-ink"
               >
                 <EyeIcon className="h-3.5 w-3.5" />
               </Link>
               <Link
                 href={`/editor/${a.id}`}
                 title="Edit article"
-                className="inline-flex items-center rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                className="inline-flex items-center rounded-md p-1.5 text-muted hover:bg-accent-soft hover:text-ink"
               >
                 <PencilIcon className="h-3.5 w-3.5" />
               </Link>
@@ -104,28 +104,28 @@ export default async function SitePage({
           </div>
         ))}
         {topPerformers.length === 0 && (
-          <div className="px-4 py-6 text-center text-sm text-gray-400">
+          <div className="px-4 py-6 text-center text-sm text-muted">
             No articles yet.
           </div>
         )}
       </div>
 
-      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-gray-500">
+      <h2 className="mt-8 text-sm font-semibold uppercase tracking-wide text-muted">
         Keywords ({keywords.length})
       </h2>
       {/* Desktop / tablet table */}
-      <div className="mt-3 hidden overflow-hidden rounded-lg border border-gray-200 bg-white sm:block">
+      <div className="mt-3 hidden overflow-hidden rounded-lg border border-line bg-card sm:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[480px] text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+              <tr className="border-b border-line bg-page">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted">
                   Keyword
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted">
                   Volume
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted">
                   Position
                 </th>
               </tr>
@@ -134,13 +134,13 @@ export default async function SitePage({
               {keywords.map((k) => (
                 <tr
                   key={k.keyword}
-                  className="border-b border-gray-100 last:border-0 hover:bg-gray-50"
+                  className="border-b border-line last:border-0 hover:bg-accent-soft"
                 >
-                  <td className="px-4 py-3 text-gray-900">{k.keyword}</td>
-                  <td className="px-4 py-3 text-gray-600">
+                  <td className="px-4 py-3 text-ink">{k.keyword}</td>
+                  <td className="px-4 py-3 text-muted">
                     {k.monthly_volume}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
+                  <td className="px-4 py-3 text-muted">
                     {k.current_position ?? "unranked"}
                   </td>
                 </tr>
@@ -149,7 +149,7 @@ export default async function SitePage({
                 <tr>
                   <td
                     colSpan={3}
-                    className="px-4 py-8 text-center text-sm text-gray-400"
+                    className="px-4 py-8 text-center text-sm text-muted"
                   >
                     No keywords assigned.
                   </td>
@@ -161,21 +161,21 @@ export default async function SitePage({
       </div>
 
       {/* Mobile card list */}
-      <div className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white sm:hidden">
+      <div className="mt-3 divide-y divide-gray-100 rounded-lg border border-line bg-card sm:hidden">
         {keywords.map((k) => (
           <div
             key={k.keyword}
             className="flex items-center justify-between gap-4 px-4 py-3 text-sm"
           >
-            <span className="text-gray-900">{k.keyword}</span>
-            <span className="shrink-0 text-xs text-gray-500">
+            <span className="text-ink">{k.keyword}</span>
+            <span className="shrink-0 text-xs text-muted">
               {k.monthly_volume} vol &middot;{" "}
               {k.current_position ?? "unranked"}
             </span>
           </div>
         ))}
         {keywords.length === 0 && (
-          <div className="px-4 py-8 text-center text-sm text-gray-400">
+          <div className="px-4 py-8 text-center text-sm text-muted">
             No keywords assigned.
           </div>
         )}

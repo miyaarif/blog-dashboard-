@@ -1,6 +1,47 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Manual (class-based) dark mode instead of Tailwind's default
+   prefers-color-scheme — a toggle needs to override the OS setting, not
+   just follow it. Applying `dark` to <html> makes every dark: utility
+   below active app-wide. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Internal-dashboard design tokens (Overview, Articles, Calendar's own
+   chrome, Keywords, Create, Review queue, the sidebar). Deliberately NOT
+   used on /blog, the calendar poster, or hero images — those keep each
+   real site's own primary_colour, which represents 3 different real
+   businesses' brand identity, not this tool's UI (explicit scope call).
+   Each --color-* becomes a real Tailwind utility (bg-page, text-ink,
+   etc.) via Tailwind v4's @theme; redefining the same variable under
+   .dark is what makes it a live-switchable token, not just a color. */
+@theme {
+  --color-page: #f8fafc;
+  --color-card: #ffffff;
+  --color-line: #e5e7eb;
+  --color-ink: #0f172a;
+  --color-muted: #64748b;
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-soft: #eff6ff;
+}
+
+:root {
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+  --color-page: #0b1120;
+  --color-card: #111827;
+  --color-line: #1f2937;
+  --color-ink: #f1f5f9;
+  --color-muted: #94a3b8;
+  --color-accent: #3b82f6;
+  --color-accent-hover: #60a5fa;
+  --color-accent-soft: rgba(59, 130, 246, 0.15);
+}
+
 body {
   font-family:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial,
@@ -19,6 +60,10 @@ body {
   position: relative;
   overflow: hidden;
   background-color: var(--color-gray-200);
+}
+
+.dark .skeleton {
+  background-color: var(--color-line);
 }
 
 .skeleton::after {

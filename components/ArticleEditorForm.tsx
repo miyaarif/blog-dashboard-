@@ -22,8 +22,8 @@ const INTENT_OPTIONS = [
 ];
 
 const inputClass =
-  "block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none";
-const labelClass = "block text-sm font-medium text-gray-700";
+  "block w-full rounded-md border border-line px-3 py-1.5 text-sm text-ink focus:border-line focus:outline-none";
+const labelClass = "block text-sm font-medium text-ink";
 
 export default function ArticleEditorForm({
   initialArticle,
@@ -102,7 +102,7 @@ export default function ArticleEditorForm({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Link
           href={backHref}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900"
+          className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"
         >
           ← Back
         </Link>
@@ -121,7 +121,7 @@ export default function ArticleEditorForm({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-gray-400 dark:disabled:bg-gray-600"
           >
             {saving && <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />}
             {saving ? "Saving…" : "Save"}
@@ -129,10 +129,10 @@ export default function ArticleEditorForm({
         </div>
       </div>
 
-      <h1 className="mt-4 text-2xl font-semibold text-gray-900">{heading}</h1>
+      <h1 className="mt-4 text-2xl font-semibold text-ink">{heading}</h1>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-5">
+        <div className="space-y-4 rounded-lg border border-line bg-card p-5">
           <div>
             <label className={labelClass}>Site</label>
             <select
@@ -233,14 +233,14 @@ export default function ArticleEditorForm({
               rows={16}
               className={`${inputClass} mt-1 font-mono`}
             />
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-muted">
               {article.word_count} words
             </p>
           </div>
 
           {financeSite && (
-            <div className="space-y-4 rounded-md border border-amber-200 bg-amber-50/60 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+            <div className="space-y-4 rounded-md border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400">
                 Finance content requirements
               </p>
 
@@ -280,26 +280,26 @@ export default function ArticleEditorForm({
                 />
               </div>
 
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <label className="flex items-center gap-2 text-sm font-medium text-ink">
                 <input
                   type="checkbox"
                   checked={article.affiliate_disclosure === true}
                   onChange={(e) =>
                     update("affiliate_disclosure", e.target.checked)
                   }
-                  className="h-4 w-4 rounded border-gray-300"
+                  className="h-4 w-4 rounded border-line"
                 />
                 Affiliate disclosure included on page
               </label>
             </div>
           )}
 
-          <div className="rounded-md border border-gray-200 p-3">
-            <p className="text-sm font-semibold text-gray-900">
+          <div className="rounded-md border border-line p-3">
+            <p className="text-sm font-semibold text-ink">
               Score: {score} / 100
             </p>
             {gate.duplicateOf.length > 0 && (
-              <p className="mt-2 rounded-md bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700">
+              <p className="mt-2 rounded-md bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700 dark:bg-red-500/10 dark:text-red-400">
                 Duplicate content — matches:{" "}
                 {gate.duplicateOf
                   .map(
@@ -320,8 +320,8 @@ export default function ArticleEditorForm({
             )}
           </div>
 
-          <div className="rounded-md border border-gray-200 p-3">
-            <p className="text-sm font-semibold text-gray-900">
+          <div className="rounded-md border border-line p-3">
+            <p className="text-sm font-semibold text-ink">
               {gate.canPublish ? "Ready to publish" : "Blocked from publishing"}
             </p>
             {!gate.canPublish && (
@@ -335,21 +335,21 @@ export default function ArticleEditorForm({
             )}
             <button
               disabled={!gate.canPublish}
-              className="mt-3 inline-flex items-center rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+              className="mt-3 inline-flex items-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-muted dark:disabled:bg-gray-700 dark:disabled:text-muted"
             >
               Publish
             </button>
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-5">
-          <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-gray-400">
+        <div className="rounded-lg border border-line bg-card p-5">
+          <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted">
             <EyeIcon className="h-3.5 w-3.5" />
             Live preview
           </div>
-          <h2 className="mt-2 text-xl font-semibold text-gray-900">
+          <h2 className="mt-2 text-xl font-semibold text-ink">
             {article.title || (
-              <span className="text-gray-300">Untitled article</span>
+              <span className="text-muted">Untitled article</span>
             )}
           </h2>
           <div className="prose prose-sm mt-4 max-w-none">

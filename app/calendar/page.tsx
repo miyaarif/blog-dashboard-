@@ -30,10 +30,10 @@ export default async function CalendarPage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-      <h1 className="text-2xl font-semibold text-gray-900">
+      <h1 className="text-2xl font-semibold text-ink">
         Publishing calendar
       </h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <p className="mt-1 text-sm text-muted">
         Scheduled and published dates for {site.name}.
       </p>
 
@@ -45,7 +45,7 @@ export default async function CalendarPage({
             className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
               s.id === site.id
                 ? "border-transparent text-white"
-                : "border-gray-300 text-gray-600 hover:bg-gray-100"
+                : "border-line text-muted hover:bg-accent-soft"
             }`}
             style={s.id === site.id ? { backgroundColor: s.primary_colour } : undefined}
           >

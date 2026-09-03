@@ -13,8 +13,8 @@ const INTENT_OPTIONS = [
 ];
 
 const inputClass =
-  "block w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none";
-const labelClass = "block text-sm font-medium text-gray-700";
+  "block w-full rounded-md border border-line px-3 py-1.5 text-sm text-ink focus:border-line focus:outline-none";
+const labelClass = "block text-sm font-medium text-ink";
 
 interface LoopTriggerResult {
   article_id?: string;
@@ -82,14 +82,14 @@ export default function CreationBoxForm({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
-      <h1 className="text-2xl font-semibold text-gray-900">Create article</h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <h1 className="text-2xl font-semibold text-ink">Create article</h1>
+      <p className="mt-1 text-sm text-muted">
         Runs the writer → grader retry loop (up to 3 attempts) and drops the
         result in the review queue.
       </p>
 
       {!isLocal && (
-        <div className="mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="mt-4 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400">
           <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             The writer/grader loop is local-only for now — it can outlast
@@ -102,7 +102,7 @@ export default function CreationBoxForm({
 
       <form
         onSubmit={handleSubmit}
-        className="mt-6 space-y-4 rounded-lg border border-gray-200 bg-white p-5"
+        className="mt-6 space-y-4 rounded-lg border border-line bg-card p-5"
       >
         <div>
           <label className={labelClass}>Site</label>
@@ -178,7 +178,7 @@ export default function CreationBoxForm({
             className={`${inputClass} mt-1`}
             placeholder="e.g. College Ave, Sallie Mae"
           />
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-muted">
             Each name must exactly match an active row in the brands table,
             or the job is refused.
           </p>
@@ -188,13 +188,13 @@ export default function CreationBoxForm({
           <button
             type="submit"
             disabled={submitting || !isLocal}
-            className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-gray-400 dark:disabled:bg-gray-600"
           >
             {submitting && <SpinnerIcon className="h-3.5 w-3.5 animate-spin" />}
             {submitting ? "Running writer → grader loop…" : "Generate"}
           </button>
           {submitting && (
-            <p className="mt-2 text-xs text-gray-400">
+            <p className="mt-2 text-xs text-muted">
               This can take several minutes — up to 3 attempts, each a writer
               call and a grader call.
             </p>
@@ -203,31 +203,31 @@ export default function CreationBoxForm({
       </form>
 
       {error && (
-        <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
           {error}
         </div>
       )}
 
       {result && (
-        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5">
-          <p className="text-sm font-semibold text-gray-900">
+        <div className="mt-4 rounded-lg border border-line bg-card p-5">
+          <p className="text-sm font-semibold text-ink">
             Outcome: {result.outcome ?? "unknown"}
           </p>
-          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-600 sm:grid-cols-4">
+          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted sm:grid-cols-4">
             <div>
-              <dt className="text-xs uppercase tracking-wide text-gray-400">
+              <dt className="text-xs uppercase tracking-wide text-muted">
                 Attempts
               </dt>
               <dd>{result.attempts_used ?? "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-gray-400">
+              <dt className="text-xs uppercase tracking-wide text-muted">
                 First score
               </dt>
               <dd>{result.first_score ?? "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-gray-400">
+              <dt className="text-xs uppercase tracking-wide text-muted">
                 Final score
               </dt>
               <dd>{result.final_score ?? "—"}</dd>
@@ -236,7 +236,7 @@ export default function CreationBoxForm({
           {result.article_id && (
             <Link
               href={`/review-queue/${result.article_id}`}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-md border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink hover:bg-accent-soft"
             >
               View in review queue →
             </Link>

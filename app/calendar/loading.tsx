@@ -10,7 +10,7 @@ export default function Loading() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <div key={i} className="rounded-lg border border-line bg-card p-4 shadow-sm">
             <Bar className="h-3 w-20" />
             <Bar className="mt-1.5 h-7 w-10" />
             <Bar className="h-3 w-16" />
@@ -19,7 +19,7 @@ export default function Loading() {
         ))}
       </div>
 
-      <div className="mt-4 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="mt-4 rounded-lg border border-line bg-card p-5 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Bar className="h-4 w-32" />
           <div className="flex gap-2">

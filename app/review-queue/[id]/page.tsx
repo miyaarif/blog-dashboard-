@@ -46,13 +46,13 @@ export default async function ReviewQueueDetailPage({
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
       <Link
         href="/review-queue"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900"
+        className="inline-flex items-center gap-1.5 text-sm text-muted hover:text-ink"
       >
         ← Back to review queue
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-semibold text-gray-900">{article.title}</h1>
+        <h1 className="text-2xl font-semibold text-ink">{article.title}</h1>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         {site && <SiteBadge site={site} />}
@@ -60,40 +60,40 @@ export default async function ReviewQueueDetailPage({
       </div>
 
       {detail.loop_run && (
-        <div className="mt-6 rounded-lg border border-gray-200 bg-white p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <div className="mt-6 rounded-lg border border-line bg-card p-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
             Loop run
           </p>
-          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-gray-600 sm:grid-cols-4">
+          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted sm:grid-cols-4">
             <div>
-              <dt className="text-xs uppercase tracking-wide text-gray-400">
+              <dt className="text-xs uppercase tracking-wide text-muted">
                 Outcome
               </dt>
-              <dd className="font-medium text-gray-900">
+              <dd className="font-medium text-ink">
                 {detail.loop_run.outcome}
               </dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-gray-400">
+              <dt className="text-xs uppercase tracking-wide text-muted">
                 Attempts
               </dt>
               <dd>{detail.loop_run.attempts_used}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-gray-400">
+              <dt className="text-xs uppercase tracking-wide text-muted">
                 First score
               </dt>
               <dd>{detail.loop_run.first_score ?? "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs uppercase tracking-wide text-gray-400">
+              <dt className="text-xs uppercase tracking-wide text-muted">
                 Final score
               </dt>
               <dd>{detail.loop_run.final_score ?? "—"}</dd>
             </div>
           </dl>
           {detail.loop_run.error_detail && (
-            <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+            <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:bg-red-500/10 dark:text-red-400">
               {detail.loop_run.error_detail}
             </p>
           )}
@@ -114,7 +114,7 @@ export default async function ReviewQueueDetailPage({
       </div>
 
       <div className="mt-6 space-y-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">
           Draft versions ({detail.drafts.length})
         </p>
         {detail.drafts.map((draft) => (
@@ -125,7 +125,7 @@ export default async function ReviewQueueDetailPage({
           />
         ))}
         {detail.drafts.length === 0 && (
-          <p className="text-sm text-gray-400">No draft versions recorded.</p>
+          <p className="text-sm text-muted">No draft versions recorded.</p>
         )}
       </div>
     </div>

@@ -96,41 +96,41 @@ export default function ArticlesTable({
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
+          <h1 className="text-2xl font-semibold text-ink">
             Articles
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted">
             {filtered.length} of {articles.length} articles
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={exportToCSV}
-            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-md border border-line bg-card px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-accent-soft"
           >
             Export CSV
           </button>
           <Link
             href="/editor/new"
-            className="inline-flex items-center gap-1.5 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+            className="inline-flex items-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
           >
             + New article
           </Link>
         </div>
       </div>
 
-      <div className="mt-6 flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:flex-wrap sm:items-center">
+      <div className="mt-6 flex flex-col gap-3 rounded-lg border border-line bg-card p-4 sm:flex-row sm:flex-wrap sm:items-center">
         <input
           placeholder="Search title…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none sm:min-w-[220px] sm:flex-1"
+          className="w-full rounded-md border border-line px-3 py-1.5 text-sm text-ink placeholder:text-muted focus:border-line focus:outline-none sm:min-w-[220px] sm:flex-1"
         />
 
         <select
           value={siteFilter}
           onChange={(e) => setSiteFilter(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none sm:w-auto"
+          className="w-full rounded-md border border-line px-3 py-1.5 text-sm text-ink focus:border-line focus:outline-none sm:w-auto"
         >
           <option value="all">All sites</option>
           {sites.map((s) => (
@@ -143,7 +143,7 @@ export default function ArticlesTable({
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none sm:w-auto"
+          className="w-full rounded-md border border-line px-3 py-1.5 text-sm text-ink focus:border-line focus:outline-none sm:w-auto"
         >
           <option value="all">All statuses</option>
           {STATUS_OPTIONS.map((s) => (
@@ -156,14 +156,14 @@ export default function ArticlesTable({
 
       {dateRange && (
         <div className="mt-3 flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-ink dark:bg-gray-500/15 dark:text-gray-300">
             Published {formatDateLabel(dateRange.from)}–
             {formatDateLabel(dateRange.to)}
             <button
               type="button"
               onClick={() => setDateRange(null)}
               aria-label="Clear date filter"
-              className="ml-0.5 text-gray-400 hover:text-gray-700"
+              className="ml-0.5 text-muted hover:text-ink"
             >
               ×
             </button>
@@ -172,22 +172,22 @@ export default function ArticlesTable({
       )}
 
       {/* Desktop / tablet table */}
-      <div className="mt-4 hidden overflow-hidden rounded-lg border border-gray-200 bg-white sm:block">
+      <div className="mt-4 hidden overflow-hidden rounded-lg border border-line bg-card sm:block">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-sm">
             <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
+              <tr className="border-b border-line bg-page">
                 <th className="w-16 px-4 py-3"></th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted">
                   Title
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted">
                   Site
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-muted">
                   Status
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-gray-500">
+                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-muted">
                   Actions
                 </th>
               </tr>
@@ -198,20 +198,20 @@ export default function ArticlesTable({
                 return (
                   <tr
                     key={a.id}
-                    className="border-b border-gray-100 last:border-0 hover:bg-gray-50"
+                    className="border-b border-line last:border-0 hover:bg-accent-soft"
                   >
                     <td className="px-4 py-3">
                       <HeroImage
                         src={a.hero_image_url}
                         alt={a.hero_image_alt ?? ""}
                         className="h-10 w-14 rounded object-cover"
-                        fallbackClassName="h-10 w-14 rounded bg-gray-100"
+                        fallbackClassName="h-10 w-14 rounded bg-gray-100 dark:bg-gray-700"
                       />
                     </td>
                     <td className="px-4 py-3">
                       <Link
                         href={`/articles/${a.id}`}
-                        className="font-medium text-gray-900 hover:underline"
+                        className="font-medium text-ink hover:underline"
                       >
                         {a.title}
                       </Link>
@@ -227,7 +227,7 @@ export default function ArticlesTable({
                         <Link
                           href={`/articles/${a.id}`}
                           title="Read article"
-                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-accent-soft hover:text-ink"
                         >
                           <EyeIcon className="h-3.5 w-3.5" />
                           Read
@@ -235,7 +235,7 @@ export default function ArticlesTable({
                         <Link
                           href={`/editor/${a.id}`}
                           title="Edit article"
-                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900"
+                          className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted transition-colors hover:bg-accent-soft hover:text-ink"
                         >
                           <PencilIcon className="h-3.5 w-3.5" />
                           Edit
@@ -249,7 +249,7 @@ export default function ArticlesTable({
                 <tr>
                   <td
                     colSpan={5}
-                    className="px-4 py-10 text-center text-sm text-gray-400"
+                    className="px-4 py-10 text-center text-sm text-muted"
                   >
                     No articles match these filters.
                   </td>
@@ -261,7 +261,7 @@ export default function ArticlesTable({
       </div>
 
       {/* Mobile card list */}
-      <div className="mt-4 divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white sm:hidden">
+      <div className="mt-4 divide-y divide-gray-100 rounded-lg border border-line bg-card sm:hidden">
         {filtered.map((a) => {
           const site = sites.find((s) => s.id === a.site_id);
           return (
@@ -270,12 +270,12 @@ export default function ArticlesTable({
                 src={a.hero_image_url}
                 alt={a.hero_image_alt ?? ""}
                 className="h-14 w-20 shrink-0 rounded object-cover"
-                fallbackClassName="h-14 w-20 shrink-0 rounded bg-gray-100"
+                fallbackClassName="h-14 w-20 shrink-0 rounded bg-gray-100 dark:bg-gray-700"
               />
               <div className="min-w-0 flex-1">
                 <Link
                   href={`/articles/${a.id}`}
-                  className="font-medium text-gray-900 hover:underline"
+                  className="font-medium text-ink hover:underline"
                 >
                   {a.title}
                 </Link>
@@ -286,14 +286,14 @@ export default function ArticlesTable({
                 <div className="mt-3 flex items-center gap-2">
                   <Link
                     href={`/articles/${a.id}`}
-                    className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-ink hover:bg-accent-soft"
                   >
                     <EyeIcon className="h-3.5 w-3.5" />
                     Read
                   </Link>
                   <Link
                     href={`/editor/${a.id}`}
-                    className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                    className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-ink hover:bg-accent-soft"
                   >
                     <PencilIcon className="h-3.5 w-3.5" />
                     Edit
@@ -304,7 +304,7 @@ export default function ArticlesTable({
           );
         })}
         {filtered.length === 0 && (
-          <div className="p-8 text-center text-sm text-gray-400">
+          <div className="p-8 text-center text-sm text-muted">
             No articles match these filters.
           </div>
         )}

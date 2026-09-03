@@ -34,7 +34,7 @@ export default function ReviewActions({
 
   if (status !== "needs_review") {
     return (
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-muted">
         This article is already {status.replace("_", " ")} — no actions to
         take.
       </p>
@@ -121,8 +121,8 @@ export default function ReviewActions({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-5">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+    <div className="rounded-lg border border-line bg-card p-5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted">
         Actions
       </p>
 
@@ -131,13 +131,13 @@ export default function ReviewActions({
           type="date"
           value={scheduledFor}
           onChange={(e) => setScheduledFor(e.target.value)}
-          className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-gray-400 focus:outline-none"
+          className="rounded-md border border-line px-3 py-1.5 text-sm text-ink focus:border-line focus:outline-none"
         />
         <button
           type="button"
           onClick={handleApprove}
           disabled={pending !== null}
-          className="inline-flex items-center rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:bg-gray-400"
+          className="inline-flex items-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-gray-400 dark:disabled:bg-gray-600"
         >
           {pending === "approve" ? "Approving…" : "Approve"}
         </button>
@@ -146,7 +146,7 @@ export default function ReviewActions({
           type="button"
           onClick={handleReject}
           disabled={pending !== null}
-          className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
+          className="inline-flex items-center rounded-md border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink hover:bg-accent-soft disabled:cursor-not-allowed disabled:text-muted"
         >
           {pending === "reject" ? "Rejecting…" : "Reject"}
         </button>
@@ -156,7 +156,7 @@ export default function ReviewActions({
             type="button"
             onClick={handleRetry}
             disabled={pending !== null || !isLocal}
-            className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {pending === "retry" ? "Starting…" : "Confirm retry — spends API credits"}
           </button>
@@ -165,7 +165,7 @@ export default function ReviewActions({
             type="button"
             onClick={() => setConfirmingRetry(true)}
             disabled={pending !== null || !isLocal}
-            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-400"
+            className="inline-flex items-center rounded-md border border-line bg-card px-3 py-1.5 text-sm font-medium text-ink hover:bg-accent-soft disabled:cursor-not-allowed disabled:text-muted"
             title={isLocal ? undefined : "Local-only for now"}
           >
             Retry
@@ -174,12 +174,12 @@ export default function ReviewActions({
       </div>
 
       {!isLocal && (
-        <p className="mt-2 text-xs text-amber-700">
+        <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
           Retry is local-only for now — run the dashboard locally to use it.
         </p>
       )}
 
-      <p className="mt-2 text-xs text-gray-400">
+      <p className="mt-2 text-xs text-muted">
         Retry creates a new article with a fresh attempt count — this one
         stays in the queue as-is.
       </p>

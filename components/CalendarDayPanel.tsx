@@ -49,7 +49,7 @@ export default function CalendarDayPanel({
         }`}
       />
       <div
-        className={`fixed right-0 top-0 z-40 h-full w-full max-w-sm transform bg-white shadow-xl transition-transform duration-300 ease-out ${
+        className={`fixed right-0 top-0 z-40 h-full w-full max-w-sm transform bg-card shadow-xl transition-transform duration-300 ease-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
         role="dialog"
@@ -57,19 +57,19 @@ export default function CalendarDayPanel({
       >
         {date && (
           <div className="flex h-full flex-col">
-            <div className="flex items-start justify-between border-b border-gray-100 p-5">
+            <div className="flex items-start justify-between border-b border-line p-5">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted">
                   {articles.length} {articles.length === 1 ? "article" : "articles"}
                 </p>
-                <h2 className="mt-0.5 text-lg font-semibold text-gray-900">
+                <h2 className="mt-0.5 text-lg font-semibold text-ink">
                   {formatDateHeading(date)}
                 </h2>
               </div>
               <button
                 onClick={onClose}
                 aria-label="Close"
-                className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="rounded-md p-1.5 text-muted hover:bg-accent-soft hover:text-ink"
               >
                 <CloseIcon className="h-4 w-4" />
               </button>
@@ -78,7 +78,7 @@ export default function CalendarDayPanel({
             <div className="p-5">
               <Link
                 href={`/editor/new?date=${date}`}
-                className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-700"
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
               >
                 + Add new article for this day
               </Link>
@@ -95,25 +95,25 @@ export default function CalendarDayPanel({
                     </div>
                     <Link
                       href={`/articles/${a.id}`}
-                      className="mt-1.5 block font-medium text-gray-900 hover:underline"
+                      className="mt-1.5 block font-medium text-ink hover:underline"
                     >
                       {a.title}
                     </Link>
-                    <p className="mt-1 text-xs text-gray-400">
+                    <p className="mt-1 text-xs text-muted">
                       {a.scheduled_for ? "Scheduled" : "Published"} for{" "}
                       {formatDateHeading(date)}
                     </p>
                     <div className="mt-2 flex items-center gap-2">
                       <Link
                         href={`/articles/${a.id}`}
-                        className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                        className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-ink hover:bg-accent-soft"
                       >
                         <EyeIcon className="h-3.5 w-3.5" />
                         Read
                       </Link>
                       <Link
                         href={`/editor/${a.id}`}
-                        className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                        className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-ink hover:bg-accent-soft"
                       >
                         <PencilIcon className="h-3.5 w-3.5" />
                         Edit
@@ -123,7 +123,7 @@ export default function CalendarDayPanel({
                 );
               })}
               {articles.length === 0 && (
-                <p className="py-8 text-center text-sm text-gray-400">
+                <p className="py-8 text-center text-sm text-muted">
                   Nothing scheduled or published this day.
                 </p>
               )}
