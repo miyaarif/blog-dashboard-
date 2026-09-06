@@ -31,12 +31,22 @@ export default async function KeywordsPage() {
         ← Back to overview
       </Link>
 
-      <h1 className="mt-4 text-2xl font-semibold text-ink">
-        Keyword opportunities ({unassigned.length})
-      </h1>
-      <p className="mt-1 text-sm text-muted">
-        Unassigned keywords, ranked by monthly search volume.
-      </p>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-ink">
+            Keyword opportunities ({unassigned.length})
+          </h1>
+          <p className="mt-1 text-sm text-muted">
+            Unassigned keywords, ranked by monthly search volume.
+          </p>
+        </div>
+        <Link
+          href="/keywords/new"
+          className="inline-flex items-center justify-center gap-1.5 rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+        >
+          + Add keyword
+        </Link>
+      </div>
 
       {cannibalization.length > 0 && (
         <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-500/30 dark:bg-red-500/10">
