@@ -10,6 +10,18 @@ import type { Draft, Grade, LoopRun } from "@/types";
 
 export const dynamic = "force-dynamic";
 
+const OUTCOME_STYLES: Record<string, string> = {
+  passed: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400",
+  failed_after_retries: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
+  error: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400",
+};
+
+const OUTCOME_LABELS: Record<string, string> = {
+  passed: "Passed",
+  failed_after_retries: "Failed after retries",
+  error: "Error",
+};
+
 interface PipelineDetail {
   drafts: Draft[];
   grades: Grade[];
@@ -61,42 +73,47 @@ export default async function ReviewQueueDetailPage({
 
       {detail.loop_run && (
         <div className="mt-6 rounded-lg border border-line bg-card p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted">
-            Loop run
-          </p>
-          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted sm:grid-cols-4">
-            <div>
-              <dt className="text-xs uppercase tracking-wide text-muted">
-                Outcome
-              </dt>
-              <dd className="font-medium text-ink">
-                {detail.loop_run.outcome}
-              </dd>
-            </div>
+          <span
+            className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-bold ${
+              OUTCOME_STYLES[detail.loop_run.outcome] ??
+              "bg-gray-100 text-gray-700 dark:bg-gray-500/10 dark:text-gray-400"
+            }`}
+          >
+            {OUTCOME_LABELS[detail.loop_run.outcome] ?? detail.loop_run.outcome}
+          </span>
+
+          {detail.loop_run.error_detail && (
+            <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-red-700 dark:bg-red-500/10 dark:text-red-400">
+              {detail.loop_run.error_detail}
+            </p>
+          )}
+
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-muted sm:grid-cols-3">
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted">
                 Attempts
               </dt>
-              <dd>{detail.loop_run.attempts_used}</dd>
+              <dd className="font-medium text-ink">
+                {detail.loop_run.attempts_used}
+              </dd>
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted">
                 First score
               </dt>
-              <dd>{detail.loop_run.first_score ?? "—"}</dd>
+              <dd className="font-medium text-ink">
+                {detail.loop_run.first_score ?? "—"}
+              </dd>
             </div>
             <div>
               <dt className="text-xs uppercase tracking-wide text-muted">
                 Final score
               </dt>
-              <dd>{detail.loop_run.final_score ?? "—"}</dd>
+              <dd className="font-medium text-ink">
+                {detail.loop_run.final_score ?? "—"}
+              </dd>
             </div>
           </dl>
-          {detail.loop_run.error_detail && (
-            <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:bg-red-500/10 dark:text-red-400">
-              {detail.loop_run.error_detail}
-            </p>
-          )}
         </div>
       )}
 

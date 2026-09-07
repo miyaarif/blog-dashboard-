@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { Draft, Grade } from "@/types";
 
 function GradeBadge({ passed }: { passed: boolean }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
         passed ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" : "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400"
       }`}
     >
@@ -49,13 +51,21 @@ export default function DraftVersionCard({
       )}
 
       {grade?.hard_fail_reason && (
-        <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:bg-red-500/10 dark:text-red-400">
+        <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-bold text-red-700 dark:bg-red-500/10 dark:text-red-400">
           Hard fail: {grade.hard_fail_reason}
         </p>
       )}
 
       {grade?.verdict_summary && (
-        <p className="mt-3 text-sm text-ink">{grade.verdict_summary}</p>
+        <p
+          className={`mt-3 text-sm font-bold ${
+            grade.passed
+              ? "text-emerald-700 dark:text-emerald-400"
+              : "text-red-700 dark:text-red-400"
+          }`}
+        >
+          {grade.verdict_summary}
+        </p>
       )}
 
       {grade && grade.issues.length > 0 && (
@@ -95,9 +105,11 @@ export default function DraftVersionCard({
       </button>
 
       {expanded && (
-        <pre className="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-line bg-page p-3 text-xs text-ink">
-          {draft.body_markdown}
-        </pre>
+        <article className="prose prose-sm mt-3 max-h-96 max-w-none overflow-auto rounded-md border border-line bg-page p-4 dark:prose-invert">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {draft.body_markdown}
+          </ReactMarkdown>
+        </article>
       )}
     </div>
   );
