@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/components/icons";
 import type { Article } from "@/types";
 
 // Real recent published posts only — background is each article's real
@@ -51,17 +52,19 @@ export default function FeaturedCarousel({
             type="button"
             onClick={() => go(index - 1)}
             aria-label="Previous featured post"
-            className="absolute left-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-gray-900 hover:bg-white"
+            style={{ color: accentColour }}
+            className="absolute left-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-md transition-transform hover:scale-110 active:scale-95"
           >
-            ‹
+            <ChevronLeftIcon className="h-6 w-6" />
           </button>
           <button
             type="button"
             onClick={() => go(index + 1)}
             aria-label="Next featured post"
-            className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-gray-900 hover:bg-white"
+            style={{ color: accentColour }}
+            className="absolute right-3 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white shadow-md transition-transform hover:scale-110 active:scale-95"
           >
-            ›
+            <ChevronRightIcon className="h-6 w-6" />
           </button>
           <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
             {articles.map((article, i) => (
