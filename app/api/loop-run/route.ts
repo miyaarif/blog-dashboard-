@@ -31,6 +31,7 @@ import {
   logParseFailure,
   recomputeWeightedTotal,
   findLowScoreCriterion,
+  findPlaceholderLeftover,
   insertArticleWithRetry,
   insertArticleBrands,
   insertDraft,
@@ -765,11 +766,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       graderOutput.scores,
       rubricRow.criteria,
     );
+    // Same server-side-floor reasoning as findLowScoreCriterion: a
+    // leftover placeholder token (e.g. "[PUBLISH DATE]", "TODO") must
+    // hard-fail regardless of what the grader model scored or said.
+    const placeholderLeftover = findPlaceholderLeftover({
+      body_markdown: writerOutput.body_markdown,
+      meta_description: writerOutput.meta_description,
+      hero_image_alt: writerOutput.hero_image_alt,
+    });
     const hardFailReason =
       graderOutput.hard_fail_reason ??
       (lowScoreCriterion
         ? `auto-fail: ${lowScoreCriterion.name} scored ${graderOutput.scores[lowScoreCriterion.name]}/5`
-        : null);
+        : null) ??
+      (placeholderLeftover ? `auto-fail: ${placeholderLeftover}` : null);
     const passed =
       recomputedTotal >= rubricRow.pass_threshold && !hardFailReason;
 

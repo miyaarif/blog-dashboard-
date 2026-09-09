@@ -438,6 +438,46 @@ export function findLowScoreCriterion(
   return null;
 }
 
+// Server-side floor, same reasoning as findLowScoreCriterion: a leftover
+// placeholder token must never depend on the grader model remembering to
+// catch it. Checked directly against the writer's real output.
+//
+// [bracket] placeholders (e.g. "[PUBLISH DATE]", "[INSERT STATISTIC]") are
+// excluded when immediately followed by "(" so real markdown links like
+// "[ScholarRoads](https://...)" never false-positive. Verified against
+// every real draft in production: zero false positives from real links,
+// and it correctly catches all 9 real historical "[PUBLISH DATE]" /
+// "[Month Year]" leftovers.
+//
+// TODO/TBD/XXX/INSERT are matched as whole words, case-insensitive, per
+// spec. INSERT is also an ordinary English verb ("insert your card"), so
+// this can in principle flag genuine prose — checked against every real
+// draft in production and found zero such cases, so leaving it exactly as
+// specified rather than narrowing it on a hypothetical.
+const PLACEHOLDER_PATTERNS: { name: string; pattern: RegExp }[] = [
+  { name: "square-bracket placeholder", pattern: /\[[^[\]]{1,80}\](?!\()/ },
+  { name: "template placeholder", pattern: /\{\{[^{}]{1,80}\}\}/ },
+  { name: '"TODO"', pattern: /\bTODO\b/i },
+  { name: '"TBD"', pattern: /\bTBD\b/i },
+  { name: '"XXX"', pattern: /\bXXX\b/i },
+  { name: '"INSERT"', pattern: /\bINSERT\b/i },
+];
+
+export function findPlaceholderLeftover(
+  fields: Record<string, string | null | undefined>,
+): string | null {
+  for (const [fieldName, text] of Object.entries(fields)) {
+    if (!text) continue;
+    for (const { name, pattern } of PLACEHOLDER_PATTERNS) {
+      const match = text.match(pattern);
+      if (match) {
+        return `${name} left in ${fieldName}: "${match[0]}"`;
+      }
+    }
+  }
+  return null;
+}
+
 // ------------------------------------------------------------
 // Article id generation
 // articles.id has no DB default. Existing rows are a flat sequence
