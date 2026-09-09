@@ -12,6 +12,22 @@ import BestDealsWidget from "@/components/blog/BestDealsWidget";
 
 export const dynamic = "force-dynamic";
 
+// last_updated is a real editorial date but is only populated on older
+// articles (seeded before the current pipeline). Every article has a real
+// updated_at from Postgres, so that's the honest fallback when
+// last_updated is null — never leave a real article with no date shown
+// when a real timestamp exists. last_updated is date-only ("2026-06-13");
+// updated_at is a full timestamptz — both need to parse correctly.
+function formatLastUpdated(value: string): string {
+  const date = value.includes("T") ? new Date(value) : new Date(`${value}T00:00:00Z`);
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export default async function BlogArticlePage({
   params,
 }: {
@@ -39,6 +55,14 @@ export default async function BlogArticlePage({
   // than just an ordinary opening paragraph from an older article.
   const hasStructuredOpening = keyTakeaways !== null;
 
+  // last_updated is real but only populated on older, pre-pipeline
+  // articles; updated_at is set by Postgres on every row, so it's the
+  // honest fallback rather than showing no date on newer real articles.
+  const rawUpdatedDate = article.last_updated ?? article.updated_at;
+  const displayUpdatedDate = rawUpdatedDate
+    ? formatLastUpdated(rawUpdatedDate)
+    : null;
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <nav className="text-sm text-muted">
@@ -61,7 +85,7 @@ export default async function BlogArticlePage({
             <AuthorByline
               authorName={article.author_name}
               authorCredentials={article.author_credentials}
-              lastUpdated={article.last_updated}
+              lastUpdated={displayUpdatedDate}
               reviewedBy={article.reviewed_by}
               accentColour={site.primary_colour}
             />

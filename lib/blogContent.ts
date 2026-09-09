@@ -46,7 +46,23 @@ function findHeadings(lines: string[]): HeadingMatch[] {
   return headings;
 }
 
-export function parseArticleBody(bodyMarkdown: string): ParsedArticleBody {
+// Until this was fixed at the source (brand_profiles + writer/reviser
+// prompts), the model was instructed to write a "Reviewed by [team] ·
+// Updated [date]" line as literal body text — a fabricated human-review
+// claim, since reviewed_by is null on every real article. That
+// instruction is gone for new content, but existing stored
+// drafts/articles already contain the line as text, so this strips it
+// at render time rather than requiring every article to be regenerated.
+// The real reviewer name and date are rendered separately by
+// AuthorByline from the real reviewed_by/last_updated columns.
+function stripFabricatedByline(bodyMarkdown: string): string {
+  return bodyMarkdown
+    .replace(/^.*\breviewed by\b.*\bupdated\b.*$/gim, "")
+    .replace(/\n{3,}/g, "\n\n");
+}
+
+export function parseArticleBody(rawBodyMarkdown: string): ParsedArticleBody {
+  const bodyMarkdown = stripFabricatedByline(rawBodyMarkdown);
   const lines = bodyMarkdown.replace(/\r\n/g, "\n").split("\n");
   const headings = findHeadings(lines);
 

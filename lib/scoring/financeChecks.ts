@@ -28,7 +28,11 @@ export function runFinanceChecks(article: Article): CheckResult[] {
       message: "Affiliate disclosure is required",
     },
     {
-      passed: isRecentEnough(article.last_updated),
+      // last_updated is only populated on older, pre-pipeline articles;
+      // updated_at is always real and set by Postgres, so it's the
+      // honest fallback rather than treating every last_updated-less
+      // article as stale (new Date(null) would parse as 1970).
+      passed: isRecentEnough(article.last_updated ?? article.updated_at),
       message: "Finance content must be updated within the last 12 months",
     },
   ];

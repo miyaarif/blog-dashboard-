@@ -39,12 +39,14 @@ export interface Article {
   reviewed_at: string | null;
   sources: string[];
   affiliate_disclosure: boolean | null;
-  last_updated: string;
+  last_updated: string | null;
   internal_links: string[];
   scheduled_for: string | null;
   published_at: string | null;
   organic_sessions_30d: number;
   avg_position: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Keyword {

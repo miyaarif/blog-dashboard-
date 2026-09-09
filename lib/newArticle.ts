@@ -42,5 +42,7 @@ export function createBlankArticle(
     published_at: null,
     organic_sessions_30d: 0,
     avg_position: null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 }
