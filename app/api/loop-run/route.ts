@@ -32,6 +32,7 @@ import {
   recomputeWeightedTotal,
   findLowScoreCriterion,
   findPlaceholderLeftover,
+  classifyContentShape,
   insertArticleWithRetry,
   updateArticleTitleWithRetry,
   insertArticleBrands,
@@ -327,6 +328,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
   }
 
+  // ---- what kind of article this actually is, so structure isn't forced
+  // into a comparison/recommendation shape when nothing is being compared ----
+  const contentShape = classifyContentShape(brands.length, input.search_intent);
+
   // ---- prompts: writer, reviser, grader — all generic-fallback the same way ----
   const { prompt: writerPrompt, error: writerPromptError } =
     await loadActivePrompt(supabaseAdmin, "writer", siteRow.content_profile);
@@ -472,6 +477,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         target_keyword: input.target_keyword,
         search_intent: input.search_intent,
         keywords: input.keywords.join(", "),
+        content_shape: contentShape,
       });
 
       const messages: ChatMessage[] = [
@@ -570,6 +576,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         pass_threshold: String(rubricRow.pass_threshold),
         hard_fail_note: hardFailNote,
         issues: formatIssuesForReviser(previousIssues),
+        content_shape: contentShape,
       });
 
       const messages: ChatMessage[] = [
@@ -699,6 +706,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       target_keyword: input.target_keyword,
       typical_word_count: profile.typical_word_count?.toString() ?? "",
       draft: writerOutput.body_markdown,
+      content_shape: contentShape,
     });
 
     const graderMessages: ChatMessage[] = [

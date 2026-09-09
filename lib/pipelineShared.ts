@@ -144,6 +144,28 @@ export function fillTemplate(
   );
 }
 
+// ------------------------------------------------------------
+// Content shape — what kind of article this actually is, so the writer
+// and grader stop forcing a comparison/recommendation structure onto
+// topics with nothing to compare. Deterministic from data already on
+// hand at generation time (verified brand count + operator-set search
+// intent) — no extra model call, no new classification step.
+// ------------------------------------------------------------
+export type ContentShape =
+  | "comparison"
+  | "single_brand"
+  | "buying_guide"
+  | "explainer";
+
+export function classifyContentShape(
+  brandCount: number,
+  searchIntent: string,
+): ContentShape {
+  if (brandCount >= 2) return "comparison";
+  if (brandCount === 1) return "single_brand";
+  return searchIntent === "informational" ? "explainer" : "buying_guide";
+}
+
 export function daysSince(
   dateString: string | null | undefined,
 ): number | null {
