@@ -33,6 +33,7 @@ import {
   findLowScoreCriterion,
   findPlaceholderLeftover,
   insertArticleWithRetry,
+  updateArticleTitleWithRetry,
   insertArticleBrands,
   insertDraft,
   insertGrade,
@@ -428,6 +429,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   let previousIssues: Issue[] = [];
   let previousScore = 0;
   let previousHardFailReason: string | null = null;
+  // input.title is the working brief the writer starts from; once the
+  // writer generates its own real title on attempt 1, this becomes that
+  // title and the article row is updated to match. The reviser doesn't
+  // regenerate it, so this stays fixed for the rest of the run.
+  let establishedTitle = input.title;
 
   attemptLoop: for (
     let attemptNumber = 1;
@@ -555,7 +561,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         mandatory_elements: formatBulletList(profile.mandatory_elements),
         must_avoid: profile.must_avoid ?? "",
         brand_facts: formatBrandFacts(brands),
-        title: input.title,
+        title: establishedTitle,
         target_keyword: input.target_keyword,
         search_intent: input.search_intent,
         keywords: input.keywords.join(", "),
@@ -635,11 +641,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       break attemptLoop;
     }
 
+    // ---- attempt 1 only: apply the writer's real generated title ----
+    if (attemptNumber === 1 && isNonEmptyString(writerOutput.title)) {
+      establishedTitle = writerOutput.title;
+      const titleUpdateResult = await updateArticleTitleWithRetry(
+        supabaseAdmin,
+        article.id,
+        establishedTitle,
+        slugify,
+      );
+      if ("errorMessage" in titleUpdateResult) {
+        outcome = "error";
+        errorDetail = `Could not apply the writer's title: ${titleUpdateResult.errorMessage}`;
+        break attemptLoop;
+      }
+    }
+
     // ---- save this attempt as a new draft version ----
     const wordCount = countWords(writerOutput.body_markdown);
     const finalSlug = isNonEmptyString(writerOutput.slug)
       ? slugify(writerOutput.slug)
-      : slugify(input.title);
+      : slugify(establishedTitle);
 
     const draftResult = await insertDraft(supabaseAdmin, {
       article_id: article.id,
@@ -673,7 +695,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       rubric: formatRubricText(rubricRow.criteria),
       hard_fail_rules: formatBulletList(rubricRow.hard_fail_rules),
       pass_threshold: String(rubricRow.pass_threshold),
-      title: input.title,
+      title: establishedTitle,
       target_keyword: input.target_keyword,
       typical_word_count: profile.typical_word_count?.toString() ?? "",
       draft: writerOutput.body_markdown,
@@ -885,7 +907,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     article_id: article.id,
     site_id: siteRow.id,
     site_name: siteRow.name,
-    title: input.title,
+    title: establishedTitle,
     outcome,
     attempts_used: attemptsUsed,
     first_score: firstScore,

@@ -266,6 +266,7 @@ export function extractJsonObject(raw: string): string | null {
 // Writer output
 // ------------------------------------------------------------
 export interface WriterOutput {
+  title: string;
   body_markdown: string;
   meta_description: string;
   slug: string;
@@ -278,6 +279,7 @@ export function isWriterOutput(value: unknown): value is WriterOutput {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
+    typeof v.title === "string" &&
     typeof v.body_markdown === "string" &&
     typeof v.meta_description === "string" &&
     typeof v.slug === "string" &&
@@ -556,6 +558,41 @@ export async function insertArticleWithRetry(
   }
 
   throw new Error("Could not create article after several id/slug collisions");
+}
+
+// The article is created with the caller's working title (input.title)
+// before the writer runs, since drafts.article_id needs a real id to
+// point at. Once the writer generates its own real title (see
+// WriterOutput.title), this updates the article to match — same
+// slug-collision retry as insertArticleWithRetry, since a different
+// title can slugify to something another real article already has.
+export async function updateArticleTitleWithRetry(
+  supabaseAdmin: SupabaseClient,
+  articleId: string,
+  title: string,
+  slugify: (title: string) => string,
+  maxAttempts = 5,
+): Promise<{ slug: string } | { errorMessage: string }> {
+  let slug = slugify(title);
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const { error } = await supabaseAdmin
+      .from("articles")
+      .update({ title, slug })
+      .eq("id", articleId);
+
+    if (!error) {
+      return { slug };
+    }
+
+    const isDuplicate = error.code === "23505";
+    if (!isDuplicate || !error.message.includes("slug")) {
+      return { errorMessage: error.message };
+    }
+    slug = `${slugify(title)}-${attempt + 2}`;
+  }
+
+  return { errorMessage: "Could not update article title after several slug collisions" };
 }
 
 export async function insertArticleBrands(
