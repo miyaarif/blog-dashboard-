@@ -494,6 +494,13 @@ export function findLowScoreCriterion(
 // this can in principle flag genuine prose — checked against every real
 // draft in production and found zero such cases, so leaving it exactly as
 // specified rather than narrowing it on a hypothetical.
+// Fix 7 (manager feedback item 1.2) -- internal-process artifacts
+// leaking into rendered output, same category of defect as the bracket
+// and {{}} placeholders above. "Score:" is deliberately scoped to the
+// real leak shape (a QA weighted_total out of 100, e.g. "Score:
+// 90/100") rather than a bare "Score:" -- "credit score: 680+" is
+// common, legitimate real phrasing in this content, and a credit score
+// is never expressed as an N/100 fraction, so this can't collide with it.
 const PLACEHOLDER_PATTERNS: { name: string; pattern: RegExp }[] = [
   { name: "square-bracket placeholder", pattern: /\[[^[\]]{1,80}\](?!\()/ },
   { name: "template placeholder", pattern: /\{\{[^{}]{1,80}\}\}/ },
@@ -501,6 +508,10 @@ const PLACEHOLDER_PATTERNS: { name: string; pattern: RegExp }[] = [
   { name: '"TBD"', pattern: /\bTBD\b/i },
   { name: '"XXX"', pattern: /\bXXX\b/i },
   { name: '"INSERT"', pattern: /\bINSERT\b/i },
+  { name: '"Score:" QA-metadata leak', pattern: /\bScore:\s*\d{1,3}\s*\/\s*100\b/i },
+  { name: '"AI-generated" leak', pattern: /\bAI[\s-]generated\b/i },
+  { name: '"placeholder" leak', pattern: /\bplaceholders?\b/i },
+  { name: '"known bug" leak', pattern: /\bknown bug\b/i },
 ];
 
 export function findPlaceholderLeftover(
