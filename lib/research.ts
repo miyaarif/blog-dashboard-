@@ -146,7 +146,15 @@ export async function callN8nResearchWebhook(
       dispatcher: RESEARCH_WEBHOOK_DISPATCHER,
     });
     if (!res.ok) {
-      throw new Error(`n8n research webhook returned ${res.status}`);
+      // Read the real body before throwing -- losing this is exactly what
+      // made the 2026-09-10 Engineering n8n failure ("returned 500", no
+      // detail) undiagnosable after the fact. n8n's own error responses
+      // are JSON (e.g. {"message":"Error in workflow"}), but this doesn't
+      // assume that -- .text() always succeeds, whatever the real body is.
+      const bodyText = await res.text().catch(() => "");
+      throw new Error(
+        `n8n research webhook returned ${res.status}${bodyText ? `: ${bodyText.slice(0, 1000)}` : ""}`,
+      );
     }
     const data = (await res.json()) as N8nResearchResponse;
     return data.results ?? [];
