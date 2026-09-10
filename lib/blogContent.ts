@@ -61,9 +61,43 @@ function stripFabricatedByline(bodyMarkdown: string): string {
     .replace(/\n{3,}/g, "\n\n");
 }
 
+// Writer v4+'s own OUTPUT spec requires body_markdown to start with the
+// article's real H1 ("the full article: H1, quick-answer block, ...")
+// -- confirmed present as a literal "# Title" first line on every
+// current-format draft checked. The page already renders a real <h1>
+// separately, from the articles.title column, so that embedded line is
+// never wanted here. findHeadings() below only recognizes ## and ###
+// as boundaries, not #, so left in place, that line falls into the
+// quick-answer text: ArticleMarkdown has no h1 override, so it renders
+// as a second real <h1>, and it also leaks a literal "#" character into
+// deriveExcerpt()'s output (used by ArticleListItem.tsx).
+//
+// Only strips the line if it's genuinely alone as an H1 -- a single #
+// followed by whitespace, matched before ## or ### ever get a chance
+// (regex requires whitespace immediately after the first #, which a
+// second # prevents). Old-format seed content never starts with a
+// line like this (confirmed: it starts directly with prose or a real
+// "## " heading), so this is a real no-op there, not a guess.
+function stripLeadingH1(bodyMarkdown: string): string {
+  const lines = bodyMarkdown.split("\n");
+  let i = 0;
+  while (i < lines.length && lines[i].trim() === "") i++;
+
+  if (i >= lines.length || !/^#\s+.+$/.test(lines[i].trim())) {
+    return bodyMarkdown;
+  }
+
+  lines.splice(i, 1);
+  if (lines[i] !== undefined && lines[i].trim() === "") {
+    lines.splice(i, 1);
+  }
+  return lines.join("\n");
+}
+
 export function parseArticleBody(rawBodyMarkdown: string): ParsedArticleBody {
-  const bodyMarkdown = stripFabricatedByline(rawBodyMarkdown);
-  const lines = bodyMarkdown.replace(/\r\n/g, "\n").split("\n");
+  const normalized = rawBodyMarkdown.replace(/\r\n/g, "\n");
+  const bodyMarkdown = stripLeadingH1(stripFabricatedByline(normalized));
+  const lines = bodyMarkdown.split("\n");
   const headings = findHeadings(lines);
 
   const quickAnswerText = lines
