@@ -502,6 +502,55 @@ export function findPlaceholderLeftover(
   return null;
 }
 
+// Server-side floor, same reasoning as findPlaceholderLeftover: whether
+// the title/keyword promises a real figure and whether the body actually
+// has one must not depend on the grader model remembering to check —
+// same real bug as the original manager-feedback example (HME's "What
+// Sponsored Video Production Actually Costs" scored 93/100 with zero $
+// or % anywhere in the body). Mirrors writer v8 rule 18 / grader v4 rule
+// 13's word list ("cost", "how much", "price", "rate", "fee"), extended
+// with the other signal words explicitly requested here (percent/%,
+// cheap/cheapest, expensive) — kept identical to the prompt-level rules
+// on purpose, so the soft instruction and the hard gate agree on what
+// counts as a promise.
+const TITLE_PROMISE_SIGNAL_WORDS: { label: string; pattern: RegExp }[] = [
+  { label: '"cost"/"costs"', pattern: /\bcosts?\b/i },
+  { label: '"price"/"prices"/"priced"/"pricing"', pattern: /\bpric(?:e|es|ed|ing)\b/i },
+  { label: '"how much"', pattern: /\bhow much\b/i },
+  { label: '"rate"/"rates"', pattern: /\brates?\b/i },
+  { label: '"fee"/"fees"', pattern: /\bfees?\b/i },
+  { label: '"percent"/"percentage"/"%"', pattern: /\bpercent(?:age)?\b|%/i },
+  { label: '"cheap"/"cheapest"', pattern: /\bcheap(?:est)?\b/i },
+  { label: '"expensive"', pattern: /\bexpensive\b/i },
+];
+
+// A real figure: a dollar amount ($5,000 / $5,000.50 / $5) or a
+// percentage (87% / 12.5 %). Either one anywhere in the body satisfies
+// the promise — this isn't checking placement or context, just whether
+// a real number exists at all, same coarse-but-reliable approach as
+// findPlaceholderLeftover.
+const PROMISED_FIGURE_PATTERNS: RegExp[] = [
+  /\$\s?\d[\d,]*(?:\.\d+)?/,
+  /\b\d+(?:\.\d+)?\s?%/,
+];
+
+export function findMissingPromisedFigures(
+  title: string,
+  targetKeyword: string,
+  body: string,
+): string | null {
+  const titleAndKeyword = `${title} ${targetKeyword}`;
+  const matchedSignal = TITLE_PROMISE_SIGNAL_WORDS.find(({ pattern }) =>
+    pattern.test(titleAndKeyword),
+  );
+  if (!matchedSignal) return null; // title/keyword doesn't promise a figure
+
+  const hasFigure = PROMISED_FIGURE_PATTERNS.some((pattern) => pattern.test(body));
+  if (hasFigure) return null;
+
+  return `title/keyword promises a figure (matched ${matchedSignal.label}) but the body contains no dollar amount or percentage`;
+}
+
 // ------------------------------------------------------------
 // Article id generation
 // articles.id has no DB default. Existing rows are a flat sequence

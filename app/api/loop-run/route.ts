@@ -32,6 +32,7 @@ import {
   recomputeWeightedTotal,
   findLowScoreCriterion,
   findPlaceholderLeftover,
+  findMissingPromisedFigures,
   classifyContentShape,
   insertArticleWithRetry,
   updateArticleTitleWithRetry,
@@ -861,12 +862,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       meta_description: writerOutput.meta_description,
       hero_image_alt: writerOutput.hero_image_alt,
     });
+    // Same server-side-floor reasoning: a title/keyword that promises a
+    // cost, rate, or percentage must not pass on "it varies" with no real
+    // number anywhere, regardless of what the grader model scored or
+    // said — this is the real bug the original manager-feedback example
+    // (HME's sponsored-video-cost article, zero $ or % at 93/100) came
+    // from, and it must not depend on the model remembering rule 18/13.
+    const missingPromisedFigures = findMissingPromisedFigures(
+      establishedTitle,
+      input.target_keyword,
+      writerOutput.body_markdown,
+    );
     const hardFailReason =
       graderOutput.hard_fail_reason ??
       (lowScoreCriterion
         ? `auto-fail: ${lowScoreCriterion.name} scored ${graderOutput.scores[lowScoreCriterion.name]}/5`
         : null) ??
-      (placeholderLeftover ? `auto-fail: ${placeholderLeftover}` : null);
+      (placeholderLeftover ? `auto-fail: ${placeholderLeftover}` : null) ??
+      (missingPromisedFigures ? `auto-fail: ${missingPromisedFigures}` : null);
     const passed =
       recomputedTotal >= rubricRow.pass_threshold && !hardFailReason;
 
