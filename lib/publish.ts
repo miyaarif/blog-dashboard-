@@ -24,7 +24,11 @@ export async function publishArticle(
 
   const { data, error } = await supabaseAdmin
     .from("articles")
-    .update({ status: "published", published_at: publishedAt })
+    // updated_at set explicitly here too, alongside the real
+    // articles_set_updated_at DB trigger (confirmed firing correctly) --
+    // defense-in-depth so this still updates correctly even if that
+    // trigger is ever dropped or missed by a future migration.
+    .update({ status: "published", published_at: publishedAt, updated_at: publishedAt })
     .eq("id", articleId)
     .select("id,status,published_at")
     .maybeSingle();

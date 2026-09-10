@@ -84,7 +84,7 @@ export default async function ArticleReadPage({
         <div>
           <dt className="text-muted">Last updated</dt>
           <dd className="mt-0.5 font-medium text-ink">
-            {article.last_updated?.split("T")[0] ?? "—"}
+            {(article.last_updated ?? article.updated_at).split("T")[0]}
           </dd>
         </div>
       </dl>

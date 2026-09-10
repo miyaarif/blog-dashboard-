@@ -76,6 +76,11 @@ export async function POST(
   const updatePayload: Record<string, unknown> = {
     status: "scheduled",
     scheduled_for: candidate.scheduled_for,
+    // Defense-in-depth alongside the real articles_set_updated_at DB
+    // trigger (confirmed firing correctly) -- a safety net so this
+    // still updates correctly even if that trigger is ever dropped or
+    // missed by a future migration.
+    updated_at: new Date().toISOString(),
   };
 
   if (loopRun) {
