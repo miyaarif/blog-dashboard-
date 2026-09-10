@@ -16,6 +16,7 @@ import {
   formatBulletList,
   formatBrandFacts,
   formatBrandProfileText,
+  formatTerminology,
   formatRubricText,
   fillTemplate,
   daysSince,
@@ -275,7 +276,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const { data: brandProfile, error: profileError } = await supabaseAdmin
     .from("brand_profiles")
     .select(
-      "tone,reading_level,person,sentence_rhythm,use_contractions,use_em_dashes,structure_rules,heading_style,opening_style,cta_style,banned_words,mandatory_elements,must_avoid,typical_word_count",
+      "tone,reading_level,person,sentence_rhythm,use_contractions,use_em_dashes,structure_rules,heading_style,opening_style,cta_style,banned_words,mandatory_elements,must_avoid,typical_word_count,terminology",
     )
     .eq("site_id", siteRow.id)
     .maybeSingle();
@@ -553,6 +554,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         banned_words: (profile.banned_words ?? []).join(", "),
         mandatory_elements: formatBulletList(profile.mandatory_elements),
         must_avoid: profile.must_avoid ?? "",
+        terminology: formatTerminology(profile.terminology),
         brand_facts: formatBrandFacts(brands),
         title: input.title,
         target_keyword: input.target_keyword,
@@ -649,6 +651,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         banned_words: (profile.banned_words ?? []).join(", "),
         mandatory_elements: formatBulletList(profile.mandatory_elements),
         must_avoid: profile.must_avoid ?? "",
+        terminology: formatTerminology(profile.terminology),
         brand_facts: formatBrandFacts(brands),
         title: establishedTitle,
         target_keyword: input.target_keyword,

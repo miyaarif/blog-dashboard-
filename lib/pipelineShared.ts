@@ -13,6 +13,11 @@ export interface SiteRow {
   content_profile: string;
 }
 
+export interface TerminologyEntry {
+  term: string;
+  real_meaning: string;
+}
+
 export interface BrandProfileRow {
   tone: string;
   reading_level: string | null;
@@ -28,6 +33,7 @@ export interface BrandProfileRow {
   mandatory_elements: string[] | null;
   must_avoid: string | null;
   typical_word_count: number | null;
+  terminology: TerminologyEntry[] | null;
 }
 
 export interface BrandRow {
@@ -105,6 +111,13 @@ export function formatBrandFacts(brands: BrandRow[]): string {
     .join("\n\n");
 }
 
+export function formatTerminology(terminology: TerminologyEntry[] | null): string {
+  if (!terminology || terminology.length === 0) return "(none recorded)";
+  return terminology
+    .map((t) => `- "${t.term}" really means: ${t.real_meaning}`)
+    .join("\n");
+}
+
 export function formatBrandProfileText(profile: BrandProfileRow): string {
   return [
     `Tone: ${profile.tone}`,
@@ -120,6 +133,7 @@ export function formatBrandProfileText(profile: BrandProfileRow): string {
     `Target length: about ${profile.typical_word_count ?? "an unspecified number of"} words`,
     `Must include:\n${formatBulletList(profile.mandatory_elements)}`,
     `Must avoid: ${profile.must_avoid ?? "Not recorded."}`,
+    `Terminology this site uses differently than the general meaning:\n${formatTerminology(profile.terminology)}`,
   ].join("\n");
 }
 
