@@ -77,16 +77,25 @@ function isBlockedDomain(url: string): boolean {
 // Deterministic — no model call decides these. A general query always
 // runs; comparison/single_brand add one query per named brand (capped
 // at 2, matching the real data where comparisons are always 2 brands).
+//
+// The brand-query branch takes `vertical` (sites.vertical), not
+// content_profile -- checked real data first: site_scholar and
+// site_fuel share content_profile "ymyl_finance" but have genuinely
+// different verticals ("Student Lending" vs "Small Business
+// Financing"), so a content_profile-keyed phrase would still have been
+// wrong for Fuel. vertical is already threaded elsewhere in the
+// pipeline as {{vertical}}, same site-level field, no new mechanism.
 export function buildResearchQueries(
   targetKeyword: string,
   contentShape: ContentShape,
   brands: BrandRow[],
+  vertical: string,
 ): string[] {
   const queries = [targetKeyword];
 
   if (contentShape === "comparison" || contentShape === "single_brand") {
     for (const brand of brands.slice(0, 2)) {
-      queries.push(`${brand.name} student loan rates terms`);
+      queries.push(`${brand.name} ${vertical} rates terms`);
     }
   } else {
     queries.push(`${targetKeyword} 2026`);
@@ -175,8 +184,9 @@ export async function runResearchStage(
   targetKeyword: string,
   contentShape: ContentShape,
   brands: BrandRow[],
+  vertical: string,
 ): Promise<ResearchResult> {
-  const queries = buildResearchQueries(targetKeyword, contentShape, brands);
+  const queries = buildResearchQueries(targetKeyword, contentShape, brands, vertical);
   const fetchedAt = new Date().toISOString().slice(0, 10);
 
   const rawResults = await callN8nResearchWebhook(
