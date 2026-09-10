@@ -27,6 +27,7 @@ export interface BrandProfileRow {
   use_em_dashes: boolean;
   structure_rules: string | null;
   heading_style: string | null;
+  heading_case: string | null;
   opening_style: string | null;
   cta_style: string | null;
   banned_words: string[] | null;
@@ -128,6 +129,7 @@ export function formatBrandProfileText(profile: BrandProfileRow): string {
     `Em dashes: ${profile.use_em_dashes ? "yes" : "no"}`,
     `Structure: ${profile.structure_rules ?? "Not recorded."}`,
     `Headings: ${profile.heading_style ?? "Not recorded."}`,
+    `Heading case rule: ${profile.heading_case ?? "Not recorded."}`,
     `Opening: ${profile.opening_style ?? "Not recorded."}`,
     `Closing: ${profile.cta_style ?? "Not recorded."}`,
     `Target length: about ${profile.typical_word_count ?? "an unspecified number of"} words`,

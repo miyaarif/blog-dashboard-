@@ -281,7 +281,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const { data: brandProfile, error: profileError } = await supabaseAdmin
     .from("brand_profiles")
     .select(
-      "tone,reading_level,person,sentence_rhythm,use_contractions,use_em_dashes,structure_rules,heading_style,opening_style,cta_style,banned_words,mandatory_elements,must_avoid,typical_word_count,terminology",
+      "tone,reading_level,person,sentence_rhythm,use_contractions,use_em_dashes,structure_rules,heading_style,heading_case,opening_style,cta_style,banned_words,mandatory_elements,must_avoid,typical_word_count,terminology",
     )
     .eq("site_id", siteRow.id)
     .maybeSingle();
@@ -589,6 +589,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         use_em_dashes: profile.use_em_dashes ? "yes" : "no",
         structure_rules: profile.structure_rules ?? "",
         heading_style: profile.heading_style ?? "",
+        heading_case: profile.heading_case ?? "",
         opening_style: profile.opening_style ?? "",
         cta_style: profile.cta_style ?? "",
         typical_word_count: profile.typical_word_count?.toString() ?? "",
@@ -687,6 +688,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         use_em_dashes: profile.use_em_dashes ? "yes" : "no",
         structure_rules: profile.structure_rules ?? "",
         heading_style: profile.heading_style ?? "",
+        heading_case: profile.heading_case ?? "",
         opening_style: profile.opening_style ?? "",
         cta_style: profile.cta_style ?? "",
         typical_word_count: profile.typical_word_count?.toString() ?? "",
