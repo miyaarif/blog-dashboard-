@@ -33,6 +33,7 @@ import {
   findLowScoreCriterion,
   findPlaceholderLeftover,
   findMissingPromisedFigures,
+  findInvalidInternalLinks,
   classifyContentShape,
   insertArticleWithRetry,
   updateArticleTitleWithRetry,
@@ -42,6 +43,10 @@ import {
   notifyN8n,
 } from "@/lib/pipelineShared";
 import { runResearchStage } from "@/lib/research";
+import {
+  getInternalLinkCandidates,
+  formatInternalLinkCandidates,
+} from "@/lib/internalLinking";
 
 const MAX_ATTEMPTS = 3;
 
@@ -475,6 +480,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // ---- internal link candidates: runs once, before attempt 1, same
+  // reasoning as the research stage — the site's real published catalog
+  // doesn't change meaningfully across 3 attempts a few minutes apart. ----
+  let internalLinkCandidates;
+  try {
+    internalLinkCandidates = await getInternalLinkCandidates(
+      supabaseAdmin,
+      siteRow.id,
+      article.id,
+    );
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Could not load internal link candidates";
+    return NextResponse.json(
+      { error: `Article created but internal link lookup failed: ${message}`, article_id: article.id },
+      { status: 500 },
+    );
+  }
+  const internalLinkCandidatesText = formatInternalLinkCandidates(internalLinkCandidates);
+  const validInternalLinkSlugs = internalLinkCandidates.map((c) => c.slug);
+
   // ---- the loop ----
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
@@ -534,6 +560,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         keywords: input.keywords.join(", "),
         content_shape: contentShape,
         research_facts: research.factSheet,
+        internal_link_candidates: internalLinkCandidatesText,
       });
 
       const messages: ChatMessage[] = [
@@ -634,6 +661,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         issues: formatIssuesForReviser(previousIssues),
         content_shape: contentShape,
         research_facts: research.factSheet,
+        internal_link_candidates: internalLinkCandidatesText,
       });
 
       const messages: ChatMessage[] = [
@@ -765,6 +793,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       draft: writerOutput.body_markdown,
       content_shape: contentShape,
       research_facts: research.factSheet,
+      internal_link_candidates: internalLinkCandidatesText,
     });
 
     const graderMessages: ChatMessage[] = [
@@ -873,13 +902,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       input.target_keyword,
       writerOutput.body_markdown,
     );
+    const invalidInternalLinks = findInvalidInternalLinks(
+      writerOutput.body_markdown,
+      validInternalLinkSlugs,
+    );
     const hardFailReason =
       graderOutput.hard_fail_reason ??
       (lowScoreCriterion
         ? `auto-fail: ${lowScoreCriterion.name} scored ${graderOutput.scores[lowScoreCriterion.name]}/5`
         : null) ??
       (placeholderLeftover ? `auto-fail: ${placeholderLeftover}` : null) ??
-      (missingPromisedFigures ? `auto-fail: ${missingPromisedFigures}` : null);
+      (missingPromisedFigures ? `auto-fail: ${missingPromisedFigures}` : null) ??
+      (invalidInternalLinks ? `auto-fail: ${invalidInternalLinks}` : null);
     const passed =
       recomputedTotal >= rubricRow.pass_threshold && !hardFailReason;
 

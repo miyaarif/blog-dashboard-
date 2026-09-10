@@ -551,6 +551,30 @@ export function findMissingPromisedFigures(
   return `title/keyword promises a figure (matched ${matchedSignal.label}) but the body contains no dollar amount or percentage`;
 }
 
+// Server-side floor, same reasoning as the two checks above: whether a
+// linked slug is real must not depend on the writer model remembering
+// not to invent one. Only checks for a FABRICATED link — a real slug
+// used that wasn't in the candidate list actually given to this
+// attempt. Does not fail an article for having zero internal links;
+// that's a real gap but not an active defect the way a broken link is
+// (see the hard-fail decision recorded in loop-run.ts), so it's left
+// as a softer, grader-flagged issue instead.
+const INTERNAL_LINK_PATTERN = /\]\(\/blog\/([a-z0-9-]+)\)/gi;
+
+export function findInvalidInternalLinks(
+  body: string,
+  candidateSlugs: string[],
+): string | null {
+  const validSlugs = new Set(candidateSlugs);
+  for (const match of body.matchAll(INTERNAL_LINK_PATTERN)) {
+    const slug = match[1];
+    if (!validSlugs.has(slug)) {
+      return `internal link to "/blog/${slug}" does not match any real candidate slug given to the writer for this attempt`;
+    }
+  }
+  return null;
+}
+
 // ------------------------------------------------------------
 // Article id generation
 // articles.id has no DB default. Existing rows are a flat sequence
