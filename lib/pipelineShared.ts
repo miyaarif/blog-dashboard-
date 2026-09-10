@@ -561,6 +561,13 @@ const PROMISED_FIGURE_PATTERNS: RegExp[] = [
   /\b\d+(?:\.\d+)?\s?%/,
 ];
 
+// Shared by findMissingPromisedFigures and findZeroGroundingOnComparison
+// below -- one definition of "does this body contain a real figure at
+// all", so the two checks can't quietly drift apart.
+function hasAnyFigure(body: string): boolean {
+  return PROMISED_FIGURE_PATTERNS.some((pattern) => pattern.test(body));
+}
+
 export function findMissingPromisedFigures(
   title: string,
   targetKeyword: string,
@@ -572,8 +579,7 @@ export function findMissingPromisedFigures(
   );
   if (!matchedSignal) return null; // title/keyword doesn't promise a figure
 
-  const hasFigure = PROMISED_FIGURE_PATTERNS.some((pattern) => pattern.test(body));
-  if (hasFigure) return null;
+  if (hasAnyFigure(body)) return null;
 
   return `title/keyword promises a figure (matched ${matchedSignal.label}) but the body contains no dollar amount or percentage`;
 }
@@ -790,6 +796,35 @@ export function findCrossArticleDuplicate(
     }
   }
   return null;
+}
+
+// Fix 6 item #5 backstop (manager feedback section 3) -- narrow, scoped
+// hard-fail for the one real risk actual data supported: a
+// comparison/single_brand article naming real brands with ZERO real
+// sources AND zero real figures anywhere. Deliberately not a universal
+// minimum -- real data (20 recent real passing articles, 2026-09-10)
+// showed 4 of 20 real, good articles have zero figures and 1 of 20 has
+// zero sources, all legitimately (buying_guide/explainer process
+// guides with no factual claim that needs a number -- one read in full
+// and confirmed genuinely good at 91/100, correctly grounded in real
+// domain_facts that drafts.sources[] doesn't even count). A blanket
+// minimum would have hard-failed those. Scoped to comparison/
+// single_brand only, matching the manager's original complaint shape
+// (a comparison article naming zero lenders). Reuses hasAnyFigure()
+// rather than a new figure regex, so this can't drift from
+// findMissingPromisedFigures's definition of "a real figure".
+export function findZeroGroundingOnComparison(
+  sources: string[],
+  body: string,
+  contentShape: ContentShape,
+): string | null {
+  if (contentShape !== "comparison" && contentShape !== "single_brand") {
+    return null;
+  }
+  if (sources.length > 0 || hasAnyFigure(body)) {
+    return null;
+  }
+  return `content shape is ${contentShape} but the draft has zero real sources and zero real figures ($ or %) anywhere`;
 }
 
 // ------------------------------------------------------------

@@ -38,6 +38,7 @@ import {
   findFabricatedByline,
   findRepetitionIssues,
   findCrossArticleDuplicate,
+  findZeroGroundingOnComparison,
   classifyContentShape,
   insertArticleWithRetry,
   updateArticleTitleWithRetry,
@@ -964,6 +965,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       writerOutput.body_markdown,
       similarityCandidates,
     );
+    const zeroGroundingIssue = findZeroGroundingOnComparison(
+      writerOutput.sources,
+      writerOutput.body_markdown,
+      contentShape,
+    );
     const hardFailReason =
       graderOutput.hard_fail_reason ??
       (lowScoreCriterion
@@ -974,7 +980,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       (invalidInternalLinks ? `auto-fail: ${invalidInternalLinks}` : null) ??
       (fabricatedByline ? `auto-fail: ${fabricatedByline}` : null) ??
       (repetitionIssue ? `auto-fail: ${repetitionIssue}` : null) ??
-      (crossArticleDuplicate ? `auto-fail: ${crossArticleDuplicate}` : null);
+      (crossArticleDuplicate ? `auto-fail: ${crossArticleDuplicate}` : null) ??
+      (zeroGroundingIssue ? `auto-fail: ${zeroGroundingIssue}` : null);
     const passed =
       recomputedTotal >= rubricRow.pass_threshold && !hardFailReason;
 
