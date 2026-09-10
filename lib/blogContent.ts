@@ -116,6 +116,61 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
+// FAQPage JSON-LD extraction (Fix 7). Real writer convention (writer
+// prompt rules 10-11): each question is a WHOLE line wrapped in
+// **bold**, ending in "?". Confirmed across 11 real generated articles
+// -- zero deviations on the question format itself. Two real
+// variants exist for question-to-answer spacing (a single line break,
+// or a blank line in between) -- both handled by skipping leading
+// blank lines before capturing.
+//
+// Deliberately captures only the FIRST paragraph after each question,
+// never "everything up to the next question or end of section". Two
+// real cases (art_0116, art_0126) have a compliance disclaimer --
+// sometimes preceded by a "---" rule, sometimes not -- sitting right
+// after the last real answer with no heading of its own. Every real
+// answer checked is a single paragraph, so bounding each answer at the
+// first blank line naturally excludes that trailing boilerplate
+// instead of gluing it onto the last real answer.
+const FAQ_QUESTION_LINE = /^\*\*(.+\?)\*\*$/;
+
+export interface FaqPair {
+  question: string;
+  answer: string;
+}
+
+export function extractFaqPairs(faqSection: string): FaqPair[] {
+  const lines = faqSection.replace(/\r\n/g, "\n").split("\n");
+  const pairs: FaqPair[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const match = lines[i].trim().match(FAQ_QUESTION_LINE);
+    if (!match) continue;
+
+    const question = stripMarkdown(match[1]);
+
+    let j = i + 1;
+    while (j < lines.length && lines[j].trim() === "") j++;
+
+    const answerLines: string[] = [];
+    while (
+      j < lines.length &&
+      lines[j].trim() !== "" &&
+      !FAQ_QUESTION_LINE.test(lines[j].trim())
+    ) {
+      answerLines.push(lines[j].trim());
+      j++;
+    }
+
+    const answer = stripMarkdown(answerLines.join(" "));
+    if (question.length > 0 && answer.length > 0) {
+      pairs.push({ question, answer });
+    }
+  }
+
+  return pairs;
+}
+
 // Real first paragraph of the article's opening (the quick-answer block
 // when present, otherwise whatever comes before the first heading), not
 // meta_description — meta_description is inconsistent in real data (empty

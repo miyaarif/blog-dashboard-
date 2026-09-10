@@ -3,10 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBlogSite, getPublishedArticleBySlug } from "@/lib/blogQueries";
 import { getBrandDealForArticle } from "@/app/api/blog/data";
-import { parseArticleBody } from "@/lib/blogContent";
+import { parseArticleBody, extractFaqPairs } from "@/lib/blogContent";
 import {
   buildArticleMetadata,
   buildArticleJsonLd,
+  buildFaqJsonLd,
   buildCanonicalUrl,
 } from "@/lib/blogMetadata";
 import HeroImage from "@/components/HeroImage";
@@ -91,6 +92,8 @@ export default async function BlogArticlePage({
 
   const canonicalUrl = buildCanonicalUrl(site.domain, article.slug);
   const articleJsonLd = buildArticleJsonLd(article, site, canonicalUrl);
+  const faqPairs = faq ? extractFaqPairs(faq) : [];
+  const faqJsonLd = buildFaqJsonLd(faqPairs);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -99,6 +102,13 @@ export default async function BlogArticlePage({
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
       />
+      {faqJsonLd && (
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        />
+      )}
       <nav className="text-sm text-muted">
         <Link href="/" className="hover:text-ink">
           Home

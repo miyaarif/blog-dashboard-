@@ -9,6 +9,7 @@
 // ------------------------------------------------------------
 import type { Metadata } from "next";
 import type { Article, Site } from "@/types";
+import type { FaqPair } from "@/lib/blogContent";
 
 // The manager's feedback doc's own guidance (title <=60, description
 // <=155) -- a real-world SEO rule of thumb (Google's SERP truncates by
@@ -108,5 +109,26 @@ export function buildArticleJsonLd(
       "@type": "WebPage",
       "@id": canonicalUrl,
     },
+  };
+}
+
+// Second, separate JSON-LD block alongside Article, not a replacement
+// for it. Returns null when there's no real FAQ section or extraction
+// found zero genuine pairs -- omit the block entirely rather than
+// emit an empty/broken FAQPage schema.
+export function buildFaqJsonLd(pairs: FaqPair[]): Record<string, unknown> | null {
+  if (pairs.length === 0) return null;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: pairs.map((pair) => ({
+      "@type": "Question",
+      name: pair.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: pair.answer,
+      },
+    })),
   };
 }
