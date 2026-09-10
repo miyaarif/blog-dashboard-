@@ -14,7 +14,7 @@ interface ReviewActionsProps {
   isLocal: boolean;
 }
 
-type PendingAction = "approve" | "reject" | "retry" | null;
+type PendingAction = "approve" | "reject" | "retry" | "publish" | null;
 
 interface HardFailWarning {
   passed: boolean | null;
@@ -37,6 +37,49 @@ export default function ReviewActions({
   const [confirmingRetry, setConfirmingRetry] = useState(false);
   const [hardFailWarning, setHardFailWarning] = useState<HardFailWarning | null>(null);
   const [error, setError] = useState("");
+
+  async function handlePublish() {
+    setPending("publish");
+    setError("");
+    try {
+      const res = await fetch(`/api/pipeline/articles/${articleId}/publish`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(typeof data?.error === "string" ? data.error : "Publish failed");
+      } else {
+        router.refresh();
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reach the server");
+    } finally {
+      setPending(null);
+    }
+  }
+
+  if (status === "scheduled") {
+    return (
+      <div className="rounded-lg border border-line bg-card p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+          Actions
+        </p>
+        <p className="mt-2 text-sm text-muted">
+          Scheduled — publishes automatically once its date arrives, or
+          publish it now instead of waiting.
+        </p>
+        <button
+          type="button"
+          onClick={handlePublish}
+          disabled={pending !== null}
+          className="mt-3 inline-flex items-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-gray-400 dark:disabled:bg-gray-600"
+        >
+          {pending === "publish" ? "Publishing…" : "Publish now"}
+        </button>
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      </div>
+    );
+  }
 
   if (status !== "needs_review") {
     return (
