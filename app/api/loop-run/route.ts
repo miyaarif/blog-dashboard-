@@ -40,6 +40,7 @@ import {
   insertGrade,
   notifyN8n,
 } from "@/lib/pipelineShared";
+import { runResearchStage } from "@/lib/research";
 
 const MAX_ATTEMPTS = 3;
 
@@ -210,6 +211,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 500 },
     );
   }
+
+  // SerpAPI/Firecrawl credentials live in n8n only (n8n credentials are
+  // write-only — the raw keys can't be exported back out), so the actual
+  // search + scrape calls happen inside an n8n workflow, not here.
+  const researchWebhookUrl = process.env.RESEARCH_WEBHOOK_URL;
+  if (!researchWebhookUrl) {
+    return NextResponse.json(
+      { error: "Server misconfigured: RESEARCH_WEBHOOK_URL is not set" },
+      { status: 500 },
+    );
+  }
+  const researchWebhookSecret = process.env.N8N_WEBHOOK_SECRET;
 
   let supabaseAdmin: SupabaseClient;
   try {
@@ -420,6 +433,47 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
+  // ---- research stage: runs once, before attempt 1. The underlying
+  // facts don't change between retries, so there's no reason to pay for
+  // fresh searches on every attempt. A failure here is a real pipeline
+  // error, not something to swallow — proceeding with no research
+  // reproduces the exact zero-figures bug this stage exists to fix. ----
+  let research;
+  try {
+    research = await runResearchStage(
+      researchWebhookUrl,
+      researchWebhookSecret,
+      article.id,
+      input.target_keyword,
+      contentShape,
+      brands,
+    );
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "n8n research webhook call failed";
+    return NextResponse.json(
+      { error: `Article created but research stage failed: ${message}`, article_id: article.id },
+      { status: 502 },
+    );
+  }
+
+  const { error: researchInsertError } = await supabaseAdmin
+    .from("research_facts")
+    .insert({
+      article_id: article.id,
+      queries: research.queries,
+      sources: research.sources,
+      fact_sheet: research.factSheet,
+    });
+  if (researchInsertError) {
+    return NextResponse.json(
+      {
+        error: `Article created but could not save research facts: ${researchInsertError.message}`,
+      },
+      { status: 500 },
+    );
+  }
+
   // ---- the loop ----
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
@@ -478,6 +532,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         search_intent: input.search_intent,
         keywords: input.keywords.join(", "),
         content_shape: contentShape,
+        research_facts: research.factSheet,
       });
 
       const messages: ChatMessage[] = [
@@ -577,6 +632,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         hard_fail_note: hardFailNote,
         issues: formatIssuesForReviser(previousIssues),
         content_shape: contentShape,
+        research_facts: research.factSheet,
       });
 
       const messages: ChatMessage[] = [
@@ -707,6 +763,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       typical_word_count: profile.typical_word_count?.toString() ?? "",
       draft: writerOutput.body_markdown,
       content_shape: contentShape,
+      research_facts: research.factSheet,
     });
 
     const graderMessages: ChatMessage[] = [
