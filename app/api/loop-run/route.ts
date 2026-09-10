@@ -36,6 +36,7 @@ import {
   findMissingPromisedFigures,
   findInvalidInternalLinks,
   findFabricatedByline,
+  findRepetitionIssues,
   classifyContentShape,
   insertArticleWithRetry,
   updateArticleTitleWithRetry,
@@ -931,6 +932,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       validInternalLinkSlugs,
     );
     const fabricatedByline = findFabricatedByline(writerOutput.body_markdown);
+    const repetitionIssue = findRepetitionIssues(
+      writerOutput.body_markdown,
+      profile.banned_words ?? [],
+    );
     const hardFailReason =
       graderOutput.hard_fail_reason ??
       (lowScoreCriterion
@@ -939,7 +944,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       (placeholderLeftover ? `auto-fail: ${placeholderLeftover}` : null) ??
       (missingPromisedFigures ? `auto-fail: ${missingPromisedFigures}` : null) ??
       (invalidInternalLinks ? `auto-fail: ${invalidInternalLinks}` : null) ??
-      (fabricatedByline ? `auto-fail: ${fabricatedByline}` : null);
+      (fabricatedByline ? `auto-fail: ${fabricatedByline}` : null) ??
+      (repetitionIssue ? `auto-fail: ${repetitionIssue}` : null);
     const passed =
       recomputedTotal >= rubricRow.pass_threshold && !hardFailReason;
 

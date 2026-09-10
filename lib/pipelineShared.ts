@@ -609,6 +609,111 @@ export function findFabricatedByline(body: string): string | null {
   return `fabricated byline line found: "${match[0].trim()}"`;
 }
 
+// Server-side floor, same reasoning as the checks above: repetition
+// must be caught deterministically, not left to the grader model to
+// notice (rule 5's "flag every banned word" already asks it to, but
+// nothing stops it from missing one).
+//
+// Phrase definition: an exact 6-word sliding window (normalized —
+// lowercased, markdown stripped, punctuation stripped), flagged if the
+// SAME window recurs 3+ times. 6 words is deliberately longer than any
+// short keyword phrase this pipeline is supposed to repeat on purpose
+// (e.g. "student loan grace period" is 4 words, "private student
+// loan" is 3) — a real target keyword repeating naturally throughout
+// an article never forms a full matching 6-word run unless the exact
+// surrounding words repeat too, which real prose doesn't do by
+// accident. The real banned phrases Fix 3a found ("here's how we think
+// about it", "so which should you pick?") are both within one window
+// of this size.
+const PHRASE_WINDOW_SIZE = 6;
+const PHRASE_REPETITION_THRESHOLD = 3;
+
+// Paragraph-duplicate threshold matches the manager's own wording
+// ("same compliance paragraph >1x") — 2 occurrences of a real
+// paragraph-length block within the same article is already the
+// defect, no need to wait for a 3rd. MIN_PARAGRAPH_WORDS keeps this
+// checking real paragraphs (like a duplicated disclosure or the
+// "exhaust federal aid first" note), not short bullets or headings
+// that legitimately repeat short structural text.
+const PARAGRAPH_REPETITION_THRESHOLD = 2;
+const MIN_PARAGRAPH_WORDS = 12;
+
+function normalizeForRepetitionCheck(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1") // markdown links -> anchor text only
+    .replace(/[*_`#]/g, "") // strip markdown emphasis/heading markers
+    .replace(/[^a-z0-9\s]/g, "") // strip remaining punctuation
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function findRepeatedPhrase(body: string): string | null {
+  const words = normalizeForRepetitionCheck(body).split(" ").filter(Boolean);
+  const counts = new Map<string, number>();
+
+  for (let i = 0; i + PHRASE_WINDOW_SIZE <= words.length; i++) {
+    const window = words.slice(i, i + PHRASE_WINDOW_SIZE).join(" ");
+    counts.set(window, (counts.get(window) ?? 0) + 1);
+  }
+
+  for (const [phrase, count] of counts) {
+    if (count >= PHRASE_REPETITION_THRESHOLD) {
+      return `the phrase "${phrase}" appears ${count} times`;
+    }
+  }
+  return null;
+}
+
+function findDuplicateParagraph(body: string): string | null {
+  const counts = new Map<string, number>();
+
+  for (const rawParagraph of body.split(/\n\s*\n/)) {
+    const normalized = normalizeForRepetitionCheck(rawParagraph);
+    if (normalized.split(" ").filter(Boolean).length < MIN_PARAGRAPH_WORDS) continue;
+    counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+  }
+
+  for (const [paragraph, count] of counts) {
+    if (count >= PARAGRAPH_REPETITION_THRESHOLD) {
+      const preview = paragraph.length > 100 ? `${paragraph.slice(0, 100)}...` : paragraph;
+      return `a paragraph appears ${count} times: "${preview}"`;
+    }
+  }
+  return null;
+}
+
+function findBannedWordUsage(body: string, bannedWords: string[]): string | null {
+  const lowerBody = body.toLowerCase();
+  for (const word of bannedWords) {
+    if (!word) continue;
+    const escaped = word.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (new RegExp(escaped).test(lowerBody)) {
+      return `banned word/phrase used: "${word}"`;
+    }
+  }
+  return null;
+}
+
+// findRepeatedPhrase() is deliberately NOT called here yet -- real
+// testing against production data (art_0105, art_0108, art_0110)
+// showed it false-positives on legitimate repeated citations,
+// terminology definitions, and the article's own topic phrase. Kept
+// in this file, unused, for later refinement (e.g. excluding windows
+// that overlap the title/target keyword or a cited source name) rather
+// than deleted, since the mechanism itself works (confirmed against a
+// synthetic unbanned-filler-phrase case) -- it just isn't safe to gate
+// on yet.
+export function findRepetitionIssues(
+  body: string,
+  bannedWords: string[],
+): string | null {
+  return (
+    findBannedWordUsage(body, bannedWords) ??
+    findDuplicateParagraph(body)
+  );
+}
+
 // ------------------------------------------------------------
 // Article id generation
 // articles.id has no DB default. Existing rows are a flat sequence
