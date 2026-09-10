@@ -1,8 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBlogSite, getPublishedArticleBySlug } from "@/lib/blogQueries";
 import { getBrandDealForArticle } from "@/app/api/blog/data";
 import { parseArticleBody } from "@/lib/blogContent";
+import {
+  buildArticleMetadata,
+  buildArticleJsonLd,
+  buildCanonicalUrl,
+} from "@/lib/blogMetadata";
 import HeroImage from "@/components/HeroImage";
 import AuthorByline from "@/components/blog/AuthorByline";
 import CalloutBox from "@/components/blog/CalloutBox";
@@ -11,6 +17,26 @@ import ArticleMarkdown from "@/components/blog/ArticleMarkdown";
 import BestDealsWidget from "@/components/blog/BestDealsWidget";
 
 export const dynamic = "force-dynamic";
+
+// Real per-article SEO metadata (Fix 7). Re-fetches the article/site --
+// Next.js doesn't automatically dedupe this against the page's own
+// fetch below without wrapping both in React's cache(), which isn't
+// used anywhere else in this codebase yet; two small reads on a
+// low-traffic page isn't worth adding that machinery for now.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const article = await getPublishedArticleBySlug(slug);
+  if (!article) return {};
+
+  const site = await getBlogSite(article.site_id);
+  if (!site) return {};
+
+  return buildArticleMetadata(article, site);
+}
 
 // last_updated is a real editorial date but is only populated on older
 // articles (seeded before the current pipeline). Every article has a real
@@ -63,8 +89,16 @@ export default async function BlogArticlePage({
     ? formatLastUpdated(rawUpdatedDate)
     : null;
 
+  const canonicalUrl = buildCanonicalUrl(site.domain, article.slug);
+  const articleJsonLd = buildArticleJsonLd(article, site, canonicalUrl);
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
       <nav className="text-sm text-muted">
         <Link href="/" className="hover:text-ink">
           Home
