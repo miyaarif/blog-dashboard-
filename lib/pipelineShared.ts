@@ -589,6 +589,26 @@ export function findInvalidInternalLinks(
   return null;
 }
 
+// Server-side floor, same reasoning as the checks above: a fabricated
+// "Reviewed by ... Updated ..." byline must not depend on the writer
+// model remembering rule 14/8, and must be caught before publish, not
+// just stripped at render time. Reuses the exact pattern already proven
+// against every real draft in production by
+// stripFabricatedByline() (lib/blogContent.ts) rather than inventing a
+// new one — that function's own comment documents it correctly strips
+// the real historical instances. Deliberately narrow: requires BOTH
+// "reviewed by" and "updated" on the same line, so a real research
+// citation like "published December 5, 2025" or "fetched September 10,
+// 2026" (real text in real passing drafts, e.g. art_0105) never
+// matches — neither word appears in those sentences.
+const FABRICATED_BYLINE_PATTERN = /^.*\breviewed by\b.*\bupdated\b.*$/im;
+
+export function findFabricatedByline(body: string): string | null {
+  const match = body.match(FABRICATED_BYLINE_PATTERN);
+  if (!match) return null;
+  return `fabricated byline line found: "${match[0].trim()}"`;
+}
+
 // ------------------------------------------------------------
 // Article id generation
 // articles.id has no DB default. Existing rows are a flat sequence

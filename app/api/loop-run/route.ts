@@ -35,6 +35,7 @@ import {
   findPlaceholderLeftover,
   findMissingPromisedFigures,
   findInvalidInternalLinks,
+  findFabricatedByline,
   classifyContentShape,
   insertArticleWithRetry,
   updateArticleTitleWithRetry,
@@ -929,6 +930,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       writerOutput.body_markdown,
       validInternalLinkSlugs,
     );
+    const fabricatedByline = findFabricatedByline(writerOutput.body_markdown);
     const hardFailReason =
       graderOutput.hard_fail_reason ??
       (lowScoreCriterion
@@ -936,7 +938,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         : null) ??
       (placeholderLeftover ? `auto-fail: ${placeholderLeftover}` : null) ??
       (missingPromisedFigures ? `auto-fail: ${missingPromisedFigures}` : null) ??
-      (invalidInternalLinks ? `auto-fail: ${invalidInternalLinks}` : null);
+      (invalidInternalLinks ? `auto-fail: ${invalidInternalLinks}` : null) ??
+      (fabricatedByline ? `auto-fail: ${fabricatedByline}` : null);
     const passed =
       recomputedTotal >= rubricRow.pass_threshold && !hardFailReason;
 
