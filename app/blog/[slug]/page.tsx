@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBlogSite, getPublishedArticleBySlug } from "@/lib/blogQueries";
-import { getBrandDealForArticle } from "@/app/api/blog/data";
+import { getBrandDealForArticle, getComplianceConfig } from "@/app/api/blog/data";
 import { parseArticleBody, extractFaqPairs } from "@/lib/blogContent";
 import {
   buildArticleMetadata,
@@ -68,6 +68,7 @@ export default async function BlogArticlePage({
   if (!site) notFound();
 
   const deal = await getBrandDealForArticle(article.id);
+  const complianceConfig = await getComplianceConfig(site.id);
   const { quickAnswer, keyTakeaways, faq, sections } = parseArticleBody(
     article.body_markdown,
   );
@@ -164,6 +165,12 @@ export default async function BlogArticlePage({
             </div>
           )}
 
+          {complianceConfig.federalAidNote && (
+            <p className="mt-6 text-sm text-muted italic">
+              {complianceConfig.federalAidNote}
+            </p>
+          )}
+
           <div className="prose prose-sm mt-6 max-w-none dark:prose-invert">
             {sections.map((section) => (
               <div key={`${section.level}-${section.heading}`}>
@@ -198,6 +205,13 @@ export default async function BlogArticlePage({
           {deal && (
             <div className="mt-8">
               <BestDealsWidget deals={[deal]} />
+            </div>
+          )}
+
+          {(complianceConfig.advisorDisclaimer || complianceConfig.affiliateDisclosure) && (
+            <div className="mt-8 space-y-2 border-t border-line pt-6 text-xs text-muted">
+              {complianceConfig.advisorDisclaimer && <p>{complianceConfig.advisorDisclaimer}</p>}
+              {complianceConfig.affiliateDisclosure && <p>{complianceConfig.affiliateDisclosure}</p>}
             </div>
           )}
         </div>

@@ -119,3 +119,36 @@ export async function getBrandDealsForSite(
   }
   return deals.slice(0, limit);
 }
+
+// Fix 7 (Section 2, manager feedback) -- real compliance boilerplate,
+// rendered at render time from brand_profiles config, never written by
+// the writer model (writer prompt v13, rule 24) and never stored in
+// body_markdown. Same reasoning as the byline: a real, approved config
+// value renders live everywhere, so one edit here fixes every article,
+// past and future, instead of a frozen copy going stale in old rows.
+// brand_profiles is service_role-only (RLS, no anon policies), so this
+// has to go through supabaseAdmin here, same as the brand-deal
+// functions above -- never accessible directly from the public page.
+export interface ComplianceConfig {
+  federalAidNote: string | null;
+  affiliateDisclosure: string | null;
+  advisorDisclaimer: string | null;
+}
+
+export async function getComplianceConfig(
+  siteId: string,
+): Promise<ComplianceConfig> {
+  const supabaseAdmin = getSupabaseAdmin();
+
+  const { data } = await supabaseAdmin
+    .from("brand_profiles")
+    .select("federal_aid_note,affiliate_disclosure,advisor_disclaimer")
+    .eq("site_id", siteId)
+    .maybeSingle();
+
+  return {
+    federalAidNote: data?.federal_aid_note ?? null,
+    affiliateDisclosure: data?.affiliate_disclosure ?? null,
+    advisorDisclaimer: data?.advisor_disclaimer ?? null,
+  };
+}
