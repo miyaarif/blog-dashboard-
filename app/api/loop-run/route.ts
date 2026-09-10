@@ -37,6 +37,7 @@ import {
   findInvalidInternalLinks,
   findFabricatedByline,
   findRepetitionIssues,
+  findCrossArticleDuplicate,
   classifyContentShape,
   insertArticleWithRetry,
   updateArticleTitleWithRetry,
@@ -50,6 +51,7 @@ import {
   getInternalLinkCandidates,
   formatInternalLinkCandidates,
 } from "@/lib/internalLinking";
+import { getSimilarityCandidates } from "@/lib/crossArticleSimilarity";
 import { getDomainFacts, formatDomainFacts } from "@/lib/domainFacts";
 
 const MAX_ATTEMPTS = 3;
@@ -506,6 +508,26 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const internalLinkCandidatesText = formatInternalLinkCandidates(internalLinkCandidates);
   const validInternalLinkSlugs = internalLinkCandidates.map((c) => c.slug);
 
+  // ---- cross-article similarity candidates: runs once, before attempt 1,
+  // same reasoning as internal link candidates -- the site's real
+  // published catalog doesn't change meaningfully across 3 attempts a
+  // few minutes apart. Same-site, published-only scope (Fix 6 item #7). ----
+  let similarityCandidates;
+  try {
+    similarityCandidates = await getSimilarityCandidates(
+      supabaseAdmin,
+      siteRow.id,
+      article.id,
+    );
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Could not load similarity candidates";
+    return NextResponse.json(
+      { error: `Article created but similarity candidate lookup failed: ${message}`, article_id: article.id },
+      { status: 500 },
+    );
+  }
+
   // ---- curated domain facts: runs once, before attempt 1, keyed on the
   // site's real vertical (not content_profile -- see lib/domainFacts.ts). ----
   let domainFacts;
@@ -936,6 +958,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       writerOutput.body_markdown,
       profile.banned_words ?? [],
     );
+    const crossArticleDuplicate = findCrossArticleDuplicate(
+      writerOutput.body_markdown,
+      similarityCandidates,
+    );
     const hardFailReason =
       graderOutput.hard_fail_reason ??
       (lowScoreCriterion
@@ -945,7 +971,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       (missingPromisedFigures ? `auto-fail: ${missingPromisedFigures}` : null) ??
       (invalidInternalLinks ? `auto-fail: ${invalidInternalLinks}` : null) ??
       (fabricatedByline ? `auto-fail: ${fabricatedByline}` : null) ??
-      (repetitionIssue ? `auto-fail: ${repetitionIssue}` : null);
+      (repetitionIssue ? `auto-fail: ${repetitionIssue}` : null) ??
+      (crossArticleDuplicate ? `auto-fail: ${crossArticleDuplicate}` : null);
     const passed =
       recomputedTotal >= rubricRow.pass_threshold && !hardFailReason;
 

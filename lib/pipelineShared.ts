@@ -714,6 +714,71 @@ export function findRepetitionIssues(
   );
 }
 
+// Server-side floor, same reasoning as the checks above: cross-article
+// duplication (Fix 6 item #7) must be caught deterministically, not
+// left to a model judging it against N full candidate bodies dropped
+// into the grader prompt -- that would add 15-40k+ tokens to an
+// already-large prompt on a pipeline with a known, unresolved Vercel
+// timeout problem, and an exact phrase/structure match is exactly what
+// this computation is for. Same algorithm as the existing
+// lib/scoring/duplicates.ts (8-word shingles, Jaccard similarity),
+// reused rather than reinvented -- that module's version has no
+// site/status scoping and belongs to the older, separate manual
+// /editor page, not this pipeline. 0.6 validated for real against the
+// actual published catalog (2026-09-10): a clean gap with zero real
+// pairs sits at [0.5, 0.6) -- everything below is genuinely distinct
+// content, everything at or above (confirmed by reading real bodies)
+// is near-identical filler, including two real pairs scoring a
+// literal 1.000.
+const SIMILARITY_SHINGLE_SIZE = 8;
+export const CROSS_ARTICLE_SIMILARITY_THRESHOLD = 0.6;
+
+function normalizeForSimilarity(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getSimilarityShingles(
+  text: string,
+  size = SIMILARITY_SHINGLE_SIZE,
+): Set<string> {
+  const words = normalizeForSimilarity(text).split(" ");
+  const shingles = new Set<string>();
+  for (let i = 0; i <= words.length - size; i++) {
+    shingles.add(words.slice(i, i + size).join(" "));
+  }
+  return shingles;
+}
+
+function jaccardSimilarity(a: Set<string>, b: Set<string>): number {
+  const intersection = new Set([...a].filter((x) => b.has(x)));
+  const union = new Set([...a, ...b]);
+  if (union.size === 0) return 0;
+  return intersection.size / union.size;
+}
+
+export function findCrossArticleDuplicate(
+  draftBody: string,
+  candidates: { id: string; title: string; body_markdown: string }[],
+  threshold: number = CROSS_ARTICLE_SIMILARITY_THRESHOLD,
+): string | null {
+  const draftShingles = getSimilarityShingles(draftBody);
+  for (const candidate of candidates) {
+    const sim = jaccardSimilarity(
+      draftShingles,
+      getSimilarityShingles(candidate.body_markdown),
+    );
+    if (sim >= threshold) {
+      const percent = Math.round(sim * 100);
+      return `too similar (${percent}% shingle overlap) to already-published "${candidate.title}" (${candidate.id})`;
+    }
+  }
+  return null;
+}
+
 // ------------------------------------------------------------
 // Article id generation
 // articles.id has no DB default. Existing rows are a flat sequence
