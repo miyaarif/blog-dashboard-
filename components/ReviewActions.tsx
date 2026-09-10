@@ -16,6 +16,11 @@ interface ReviewActionsProps {
 
 type PendingAction = "approve" | "reject" | "retry" | null;
 
+interface HardFailWarning {
+  passed: boolean | null;
+  hard_fail_reason: string;
+}
+
 export default function ReviewActions({
   articleId,
   status,
@@ -30,6 +35,7 @@ export default function ReviewActions({
   const [scheduledFor, setScheduledFor] = useState("");
   const [pending, setPending] = useState<PendingAction>(null);
   const [confirmingRetry, setConfirmingRetry] = useState(false);
+  const [hardFailWarning, setHardFailWarning] = useState<HardFailWarning | null>(null);
   const [error, setError] = useState("");
 
   if (status !== "needs_review") {
@@ -41,7 +47,7 @@ export default function ReviewActions({
     );
   }
 
-  async function handleApprove() {
+  async function handleApprove(confirmHardFail = false) {
     if (!scheduledFor) {
       setError("Pick a date first");
       return;
@@ -52,12 +58,23 @@ export default function ReviewActions({
       const res = await fetch(`/api/pipeline/articles/${articleId}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scheduled_for: scheduledFor }),
+        body: JSON.stringify({
+          scheduled_for: scheduledFor,
+          confirm_hard_fail: confirmHardFail,
+        }),
       });
       const data = await res.json();
-      if (!res.ok) {
+      if (res.status === 409 && typeof data?.hard_fail_reason === "string") {
+        // Best draft didn't pass review — show the real reason and require
+        // an explicit second click before overriding, don't silently retry.
+        setHardFailWarning({
+          passed: data.passed ?? null,
+          hard_fail_reason: data.hard_fail_reason,
+        });
+      } else if (!res.ok) {
         setError(typeof data?.error === "string" ? data.error : "Approve failed");
       } else {
+        setHardFailWarning(null);
         router.refresh();
       }
     } catch (err) {
@@ -135,7 +152,7 @@ export default function ReviewActions({
         />
         <button
           type="button"
-          onClick={handleApprove}
+          onClick={() => handleApprove(false)}
           disabled={pending !== null}
           className="inline-flex items-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-gray-400 dark:disabled:bg-gray-600"
         >
@@ -172,6 +189,25 @@ export default function ReviewActions({
           </button>
         )}
       </div>
+
+      {hardFailWarning && (
+        <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-500/30 dark:bg-amber-500/10">
+          <p className="font-semibold text-amber-800 dark:text-amber-400">
+            The best draft for this article did not pass review.
+          </p>
+          <p className="mt-1 text-amber-800 dark:text-amber-400">
+            {hardFailWarning.hard_fail_reason}
+          </p>
+          <button
+            type="button"
+            onClick={() => handleApprove(true)}
+            disabled={pending !== null}
+            className="mt-2 inline-flex items-center rounded-md border border-amber-400 bg-amber-100 px-3 py-1.5 text-sm font-medium text-amber-900 hover:bg-amber-200 dark:border-amber-500/40 dark:bg-amber-500/20 dark:text-amber-300 dark:hover:bg-amber-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {pending === "approve" ? "Approving…" : "Approve anyway, despite the failure"}
+          </button>
+        </div>
+      )}
 
       {!isLocal && (
         <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
