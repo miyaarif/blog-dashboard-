@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import type { Site } from "@/types";
+import type { Site, Keyword } from "@/types";
 import { SpinnerIcon, AlertIcon } from "@/components/icons";
 
 const INTENT_OPTIONS = [
@@ -33,20 +33,45 @@ function parseCommaList(raw: string): string[] {
 
 export default function CreationBoxForm({
   sites,
+  keywords,
   isLocal,
 }: {
   sites: Site[];
+  keywords: Keyword[];
   isLocal: boolean;
 }) {
   const [siteId, setSiteId] = useState(sites[0]?.id ?? "");
   const [title, setTitle] = useState("");
   const [targetKeyword, setTargetKeyword] = useState("");
   const [searchIntent, setSearchIntent] = useState("informational");
+  // Once the human edits Intent directly, stop overwriting it — the
+  // autofill below is a convenience default, not a value that should
+  // fight back against a deliberate override.
+  const [intentTouched, setIntentTouched] = useState(false);
   const [keywordsText, setKeywordsText] = useState("");
   const [brandNamesText, setBrandNamesText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<LoopTriggerResult | null>(null);
   const [error, setError] = useState("");
+
+  // Real investigation (2026-09-11): the keywords table already has a
+  // real, researched intent value for keywords a human has entered
+  // there, but the create form always defaulted to "informational"
+  // regardless. Autofill from the real keywords row when target_keyword
+  // matches one exactly (same site, case-insensitive) -- never guessed,
+  // only ever a real value already in the database.
+  useEffect(() => {
+    if (intentTouched) return;
+    const normalizedKeyword = targetKeyword.trim().toLowerCase();
+    if (!normalizedKeyword) {
+      setSearchIntent("informational");
+      return;
+    }
+    const match = keywords.find(
+      (k) => k.site_id === siteId && k.keyword.trim().toLowerCase() === normalizedKeyword,
+    );
+    setSearchIntent(match ? match.intent : "informational");
+  }, [siteId, targetKeyword, keywords, intentTouched]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -145,7 +170,10 @@ export default function CreationBoxForm({
             <input
               list="intent-options"
               value={searchIntent}
-              onChange={(e) => setSearchIntent(e.target.value)}
+              onChange={(e) => {
+                setSearchIntent(e.target.value);
+                setIntentTouched(true);
+              }}
               className={`${inputClass} mt-1`}
             />
             <datalist id="intent-options">
