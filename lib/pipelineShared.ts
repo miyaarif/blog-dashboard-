@@ -202,6 +202,9 @@ export const DEEPSEEK_TIMEOUT_MS = 300_000;
 // to cover reasoning + the final JSON, not just the JSON alone.
 export const GRADER_MAX_TOKENS = 20000;
 export const WRITER_MAX_TOKENS = 4000;
+// The outline call returns a section skeleton (headings + short planning
+// notes), not full prose -- a fraction of a full draft's output size.
+export const OUTLINE_MAX_TOKENS = 2500;
 
 export interface ChatMessage {
   role: "user" | "assistant";

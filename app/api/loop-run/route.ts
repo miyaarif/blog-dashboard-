@@ -23,11 +23,13 @@ import {
   callDeepSeek,
   WRITER_MAX_TOKENS,
   GRADER_MAX_TOKENS,
+  OUTLINE_MAX_TOKENS,
   ChatMessage,
   DeepSeekResult,
   DeepSeekSuccess,
   parseWriterOutput,
   WriterOutput,
+  extractJsonObject,
   resolveGraderOutput,
   logParseFailure,
   recomputeWeightedTotal,
@@ -54,6 +56,13 @@ import {
 } from "@/lib/internalLinking";
 import { getSimilarityCandidates } from "@/lib/crossArticleSimilarity";
 import { getDomainFacts, formatDomainFacts } from "@/lib/domainFacts";
+import {
+  buildOutlineSkeleton,
+  formatOutlineSkeletonForPrompt,
+  formatOutlineForPrompt,
+  isPopulatedOutline,
+  PopulatedOutline,
+} from "@/lib/outline";
 
 const MAX_ATTEMPTS = 3;
 
@@ -386,6 +395,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
+  const { prompt: outlinePrompt, error: outlinePromptError } =
+    await loadActivePrompt(supabaseAdmin, "outline", siteRow.content_profile);
+  if (outlinePromptError || !outlinePrompt) {
+    return NextResponse.json(
+      { error: outlinePromptError ?? "Could not load outline prompt" },
+      { status: 400 },
+    );
+  }
+
   // ---- active rubric for this content profile ----
   const { data: rubric, error: rubricError } = await supabaseAdmin
     .from("rubrics")
@@ -544,9 +562,151 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
   const domainFactsText = formatDomainFacts(domainFacts);
 
-  // ---- the loop ----
+  // ---- outline stage: runs once, before attempt 1, same lifecycle as
+  // research/domain-facts/content-shape above. The section skeleton
+  // (which named sections, in what order) is deterministic from
+  // contentShape -- buildOutlineSkeleton() below, no AI call. The AI
+  // call here does one narrower job: populate that skeleton with real
+  // headings/key_points grounded in this assignment's already-fetched
+  // facts, and commit a real takeaway_count/faq_topics. Reused
+  // unchanged by every reviser attempt, so a content-only hard-fail on
+  // attempt 2 doesn't also silently reshuffle the article's structure. ----
+  const outlineSkeleton = buildOutlineSkeleton(contentShape, brands);
+  const outlineSkeletonText = formatOutlineSkeletonForPrompt(outlineSkeleton);
+
+  const outlineStartedAt = Date.now();
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
+
+  const resolvedOutlinePrompt = fillTemplate(outlinePrompt.body, {
+    vertical: siteRow.vertical ?? "",
+    content_shape: contentShape,
+    title: input.title,
+    target_keyword: input.target_keyword,
+    search_intent: input.search_intent,
+    keywords: input.keywords.join(", "),
+    brand_facts: formatBrandFacts(brands),
+    research_facts: research.factSheet,
+    domain_facts: domainFactsText,
+    outline_skeleton: outlineSkeletonText,
+  });
+
+  const outlineMessages: ChatMessage[] = [
+    { role: "user", content: resolvedOutlinePrompt },
+  ];
+  let outlineAttempt: DeepSeekResult;
+  try {
+    outlineAttempt = await callDeepSeek(
+      deepseekApiKey,
+      outlinePrompt.model,
+      outlineMessages,
+      OUTLINE_MAX_TOKENS,
+      true,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "DeepSeek call failed";
+    return NextResponse.json(
+      { error: `Article created but outline stage failed: ${message}`, article_id: article.id },
+      { status: 502 },
+    );
+  }
+  if (!outlineAttempt.ok) {
+    return NextResponse.json(
+      {
+        error: `Article created but outline stage failed: DeepSeek API error: ${JSON.stringify(outlineAttempt.detail)}`,
+        article_id: article.id,
+      },
+      { status: 502 },
+    );
+  }
+  totalInputTokens += outlineAttempt.inputTokens;
+  totalOutputTokens += outlineAttempt.outputTokens;
+
+  function parseOutline(raw: string): PopulatedOutline | null {
+    const jsonText = extractJsonObject(raw);
+    if (!jsonText) return null;
+    try {
+      const parsed: unknown = JSON.parse(jsonText);
+      return isPopulatedOutline(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  let populatedOutline = parseOutline(outlineAttempt.content);
+
+  if (!populatedOutline) {
+    outlineMessages.push({ role: "assistant", content: outlineAttempt.content });
+    outlineMessages.push({
+      role: "user",
+      content: "Your last response was not valid JSON. Return only the JSON object.",
+    });
+    let outlineRetry: DeepSeekResult;
+    try {
+      outlineRetry = await callDeepSeek(
+        deepseekApiKey,
+        outlinePrompt.model,
+        outlineMessages,
+        OUTLINE_MAX_TOKENS,
+        true,
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "DeepSeek call failed";
+      return NextResponse.json(
+        { error: `Article created but outline stage failed: ${message}`, article_id: article.id },
+        { status: 502 },
+      );
+    }
+    if (!outlineRetry.ok) {
+      return NextResponse.json(
+        {
+          error: `Article created but outline stage failed: DeepSeek API error: ${JSON.stringify(outlineRetry.detail)}`,
+          article_id: article.id,
+        },
+        { status: 502 },
+      );
+    }
+    totalInputTokens += outlineRetry.inputTokens;
+    totalOutputTokens += outlineRetry.outputTokens;
+    populatedOutline = parseOutline(outlineRetry.content);
+  }
+
+  if (!populatedOutline) {
+    return NextResponse.json(
+      {
+        error: "Article created but outline stage did not return valid JSON after one retry",
+        article_id: article.id,
+      },
+      { status: 502 },
+    );
+  }
+
+  const outlineDurationMs = Date.now() - outlineStartedAt;
+  console.log(
+    `outline population for article ${article.id}: ${outlineDurationMs}ms, ` +
+      `${totalInputTokens} input tokens, ${totalOutputTokens} output tokens`,
+  );
+
+  const { error: outlineInsertError } = await supabaseAdmin
+    .from("outlines")
+    .insert({
+      article_id: article.id,
+      content_shape: contentShape,
+      sections: populatedOutline,
+    });
+  if (outlineInsertError) {
+    return NextResponse.json(
+      {
+        error: `Article created but could not save outline: ${outlineInsertError.message}`,
+        article_id: article.id,
+      },
+      { status: 500 },
+    );
+  }
+
+  const outlineText = formatOutlineForPrompt(populatedOutline);
+
+  // ---- the loop ----
   let firstScore: number | null = null;
   let best: AttemptResult | null = null;
   let outcome: "passed" | "failed_after_retries" | "error" =
@@ -607,6 +767,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         research_facts: research.factSheet,
         internal_link_candidates: internalLinkCandidatesText,
         domain_facts: domainFactsText,
+        outline: outlineText,
       });
 
       const messages: ChatMessage[] = [
@@ -711,6 +872,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         research_facts: research.factSheet,
         internal_link_candidates: internalLinkCandidatesText,
         domain_facts: domainFactsText,
+        outline: outlineText,
       });
 
       const messages: ChatMessage[] = [
