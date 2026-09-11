@@ -200,7 +200,14 @@ export const DEEPSEEK_TIMEOUT_MS = 300_000;
 // of final JSON. deepseek-reasoner spends part of this same budget on
 // reasoning_content before it ever writes the answer, so the ceiling has
 // to cover reasoning + the final JSON, not just the JSON alone.
-export const GRADER_MAX_TOKENS = 20000;
+//
+// Raised 20000 -> 30000 for grader v11's fact_grounding_audit (Fix 8 part
+// 1): real output_tokens were already hitting 19095/20000 on some v10
+// grades before this field existed, and a direct test of v11 against a
+// real draft hit the 20000 ceiling exactly and truncated mid-JSON. This
+// is a real added cost of the audit-trail field, not a free change --
+// more completion tokens, not a new call.
+export const GRADER_MAX_TOKENS = 30000;
 export const WRITER_MAX_TOKENS = 4000;
 // The outline call returns a section skeleton (headings + short planning
 // notes), not full prose -- a fraction of a full draft's output size.
