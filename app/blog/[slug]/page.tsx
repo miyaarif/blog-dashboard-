@@ -2,8 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBlogSite, getPublishedArticleBySlug } from "@/lib/blogQueries";
-import { getBrandDealForArticle, getComplianceConfig } from "@/app/api/blog/data";
+import {
+  getBrandDealForArticle,
+  getComplianceConfig,
+  getArticleCtaBrands,
+} from "@/app/api/blog/data";
 import { parseArticleBody, extractFaqPairs } from "@/lib/blogContent";
+import { assignAffiliateCtasToSections } from "@/lib/affiliateCta";
 import {
   buildArticleMetadata,
   buildArticleJsonLd,
@@ -68,6 +73,7 @@ export default async function BlogArticlePage({
   if (!site) notFound();
 
   const deal = await getBrandDealForArticle(article.id);
+  const ctaBrands = await getArticleCtaBrands(article.id);
   const complianceConfig = await getComplianceConfig(site.id);
   const { quickAnswer, keyTakeaways, faq, sections } = parseArticleBody(
     article.body_markdown,
@@ -172,11 +178,33 @@ export default async function BlogArticlePage({
           )}
 
           <div className="prose prose-sm mt-6 max-w-none dark:prose-invert">
-            {sections.map((section) => (
-              <div key={`${section.level}-${section.heading}`}>
-                <ArticleMarkdown>{`${"#".repeat(section.level)} ${section.heading}\n\n${section.content}`}</ArticleMarkdown>
-              </div>
-            ))}
+            {(() => {
+              const sectionCtas = assignAffiliateCtasToSections(sections, ctaBrands);
+              return sections.map((section, i) => {
+                const cta = sectionCtas.get(i) ?? null;
+                return (
+                  <div key={`${section.level}-${section.heading}`}>
+                    <ArticleMarkdown>{`${"#".repeat(section.level)} ${section.heading}\n\n${section.content}`}</ArticleMarkdown>
+                    {cta && (
+                      <div className="not-prose my-6 rounded-lg border border-line bg-card p-5">
+                        <a
+                          href={cta.ctaLink}
+                          target="_blank"
+                          rel="noopener noreferrer sponsored"
+                          className="inline-block rounded-md px-4 py-2 text-sm font-medium text-white"
+                          style={{ backgroundColor: site.primary_colour }}
+                        >
+                          Apply with {cta.brandName}
+                        </a>
+                        {cta.disclosureText && (
+                          <p className="mt-2 text-xs text-muted">{cta.disclosureText}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
           </div>
 
           {deal && (

@@ -120,6 +120,45 @@ export async function getBrandDealsForSite(
   return deals.slice(0, limit);
 }
 
+// Section 3 (manager feedback) -- real affiliate CTA blocks, config-driven.
+// All real brands linked to this article (not just the primary one) --
+// a comparison article needs its own CTA per named lender, not only
+// the first. See lib/affiliateCta.ts for the real gate: only a brand
+// with a real, non-null affiliate_link ever produces a rendered CTA --
+// returns brands here regardless, the gate lives in one place, not two.
+export interface ArticleCtaBrand {
+  id: string;
+  name: string;
+  affiliate_link: string | null;
+  disclosure_text: string | null;
+}
+
+export async function getArticleCtaBrands(
+  articleId: string,
+): Promise<ArticleCtaBrand[]> {
+  const supabaseAdmin = getSupabaseAdmin();
+
+  const { data: links } = await supabaseAdmin
+    .from("article_brands")
+    .select("brand_id")
+    .eq("article_id", articleId);
+  const brandIds = [...new Set((links ?? []).map((l) => l.brand_id as string))];
+  if (brandIds.length === 0) return [];
+
+  const { data: brands } = await supabaseAdmin
+    .from("brands")
+    .select("id, name, affiliate_link, disclosure_text, active")
+    .in("id", brandIds)
+    .eq("active", true);
+
+  return (brands ?? []).map((b) => ({
+    id: b.id as string,
+    name: b.name as string,
+    affiliate_link: b.affiliate_link as string | null,
+    disclosure_text: b.disclosure_text as string | null,
+  }));
+}
+
 // Fix 7 (Section 2, manager feedback) -- real compliance boilerplate,
 // rendered at render time from brand_profiles config, never written by
 // the writer model (writer prompt v13, rule 24) and never stored in
