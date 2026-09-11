@@ -34,13 +34,7 @@ import {
   logParseFailure,
   recomputeWeightedTotal,
   findLowScoreCriterion,
-  findPlaceholderLeftover,
-  findMissingPromisedFigures,
-  findInvalidInternalLinks,
-  findFabricatedByline,
-  findRepetitionIssues,
-  findCrossArticleDuplicate,
-  findZeroGroundingOnComparison,
+  runLintChecks,
   classifyContentShape,
   insertArticleWithRetry,
   updateArticleTitleWithRetry,
@@ -1095,55 +1089,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       graderOutput.scores,
       rubricRow.criteria,
     );
-    // Same server-side-floor reasoning as findLowScoreCriterion: a
-    // leftover placeholder token (e.g. "[PUBLISH DATE]", "TODO") must
-    // hard-fail regardless of what the grader model scored or said.
-    const placeholderLeftover = findPlaceholderLeftover({
-      body_markdown: writerOutput.body_markdown,
-      meta_description: writerOutput.meta_description,
-      hero_image_alt: writerOutput.hero_image_alt,
-    });
-    // Same server-side-floor reasoning: a title/keyword that promises a
-    // cost, rate, or percentage must not pass on "it varies" with no real
-    // number anywhere, regardless of what the grader model scored or
-    // said — this is the real bug the original manager-feedback example
-    // (HME's sponsored-video-cost article, zero $ or % at 93/100) came
-    // from, and it must not depend on the model remembering rule 18/13.
-    const missingPromisedFigures = findMissingPromisedFigures(
-      establishedTitle,
-      input.target_keyword,
-      writerOutput.body_markdown,
+
+    // ---- lint stage: deterministic checks, run as their own explicit
+    // step now that the grader has returned. Same 7 checks as before,
+    // same order, same messages -- see runLintChecks in pipelineShared.ts. ----
+    const lintResult = runLintChecks(
+      {
+        body_markdown: writerOutput.body_markdown,
+        meta_description: writerOutput.meta_description,
+        hero_image_alt: writerOutput.hero_image_alt,
+        sources: writerOutput.sources,
+      },
+      {
+        title: establishedTitle,
+        targetKeyword: input.target_keyword,
+        validInternalLinkSlugs,
+        bannedWords: profile.banned_words ?? [],
+        similarityCandidates,
+        contentShape,
+      },
     );
-    const invalidInternalLinks = findInvalidInternalLinks(
-      writerOutput.body_markdown,
-      validInternalLinkSlugs,
-    );
-    const fabricatedByline = findFabricatedByline(writerOutput.body_markdown);
-    const repetitionIssue = findRepetitionIssues(
-      writerOutput.body_markdown,
-      profile.banned_words ?? [],
-    );
-    const crossArticleDuplicate = findCrossArticleDuplicate(
-      writerOutput.body_markdown,
-      similarityCandidates,
-    );
-    const zeroGroundingIssue = findZeroGroundingOnComparison(
-      writerOutput.sources,
-      writerOutput.body_markdown,
-      contentShape,
-    );
+
     const hardFailReason =
       graderOutput.hard_fail_reason ??
       (lowScoreCriterion
         ? `auto-fail: ${lowScoreCriterion.name} scored ${graderOutput.scores[lowScoreCriterion.name]}/5`
         : null) ??
-      (placeholderLeftover ? `auto-fail: ${placeholderLeftover}` : null) ??
-      (missingPromisedFigures ? `auto-fail: ${missingPromisedFigures}` : null) ??
-      (invalidInternalLinks ? `auto-fail: ${invalidInternalLinks}` : null) ??
-      (fabricatedByline ? `auto-fail: ${fabricatedByline}` : null) ??
-      (repetitionIssue ? `auto-fail: ${repetitionIssue}` : null) ??
-      (crossArticleDuplicate ? `auto-fail: ${crossArticleDuplicate}` : null) ??
-      (zeroGroundingIssue ? `auto-fail: ${zeroGroundingIssue}` : null);
+      lintResult.hardFailReason;
     const passed =
       recomputedTotal >= rubricRow.pass_threshold && !hardFailReason;
 

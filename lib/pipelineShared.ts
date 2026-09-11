@@ -838,6 +838,82 @@ export function findZeroGroundingOnComparison(
 }
 
 // ------------------------------------------------------------
+// Fix 8 build order item 3 -- lint stage.
+// Pure refactor: the 7 checks below (placeholder leftovers through
+// zero-grounding) already existed as separate function calls stapled
+// into the same synchronous block as grading. This wraps them in one
+// named function, run as its own explicit step, so "lint" is a real,
+// separately-named stage in the code, matching the manager's shape --
+// no new check, no behavior change, no new AI call. Order and message
+// text are preserved exactly so hardFailReason precedence is identical
+// to before the refactor.
+// ------------------------------------------------------------
+export interface LintDraftFields {
+  body_markdown: string;
+  meta_description: string;
+  hero_image_alt: string;
+  sources: string[];
+}
+
+export interface LintContext {
+  title: string;
+  targetKeyword: string;
+  validInternalLinkSlugs: string[];
+  bannedWords: string[];
+  similarityCandidates: { id: string; title: string; body_markdown: string }[];
+  contentShape: ContentShape;
+}
+
+export interface LintResult {
+  hardFailReason: string | null;
+}
+
+export function runLintChecks(
+  draft: LintDraftFields,
+  context: LintContext,
+): LintResult {
+  const placeholderLeftover = findPlaceholderLeftover({
+    body_markdown: draft.body_markdown,
+    meta_description: draft.meta_description,
+    hero_image_alt: draft.hero_image_alt,
+  });
+  const missingPromisedFigures = findMissingPromisedFigures(
+    context.title,
+    context.targetKeyword,
+    draft.body_markdown,
+  );
+  const invalidInternalLinks = findInvalidInternalLinks(
+    draft.body_markdown,
+    context.validInternalLinkSlugs,
+  );
+  const fabricatedByline = findFabricatedByline(draft.body_markdown);
+  const repetitionIssue = findRepetitionIssues(
+    draft.body_markdown,
+    context.bannedWords,
+  );
+  const crossArticleDuplicate = findCrossArticleDuplicate(
+    draft.body_markdown,
+    context.similarityCandidates,
+  );
+  const zeroGroundingIssue = findZeroGroundingOnComparison(
+    draft.sources,
+    draft.body_markdown,
+    context.contentShape,
+  );
+
+  const hardFailReason =
+    (placeholderLeftover ? `auto-fail: ${placeholderLeftover}` : null) ??
+    (missingPromisedFigures ? `auto-fail: ${missingPromisedFigures}` : null) ??
+    (invalidInternalLinks ? `auto-fail: ${invalidInternalLinks}` : null) ??
+    (fabricatedByline ? `auto-fail: ${fabricatedByline}` : null) ??
+    (repetitionIssue ? `auto-fail: ${repetitionIssue}` : null) ??
+    (crossArticleDuplicate ? `auto-fail: ${crossArticleDuplicate}` : null) ??
+    (zeroGroundingIssue ? `auto-fail: ${zeroGroundingIssue}` : null);
+
+  return { hardFailReason };
+}
+
+// ------------------------------------------------------------
 // Article id generation
 // articles.id has no DB default. Existing rows are a flat sequence
 // art_0001, art_0002, ... shared across all sites.
