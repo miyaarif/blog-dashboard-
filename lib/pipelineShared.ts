@@ -710,7 +710,64 @@ function normalizeForRepetitionCheck(text: string): string {
     .trim();
 }
 
-function findRepeatedPhrase(body: string): string | null {
+// Round 2 refinement (2026-09-11), still NOT wired into
+// findRepetitionIssues/runLintChecks -- real testing shows it is not
+// yet safe to hard-fail on. Real progress made, real limits found; both
+// recorded here so the next attempt doesn't have to rediscover them.
+//
+// Round 1 fix: compare each repeated window against referenceText (the
+// real supplied material for the assignment -- title, target_keyword,
+// research_facts, domain_facts, terminology, brand_facts). This closed
+// the cleanest false positives -- confirmed fully fixed: the article's
+// own topic phrase repeating (art_0110, "a private loan without a
+// cosigner" == the real target_keyword) and short verbatim terminology
+// reuse. But requiring the FULL 6-word window to match verbatim still
+// false-positived whenever the writer paraphrased real supplied text
+// even slightly.
+//
+// Round 2 fix: relaxed the match to accept any contiguous run of at
+// least MIN_GROUNDED_RUN words, not the full window -- real reused
+// content almost always keeps a solid multi-word core in common with
+// its source even when the edges are paraphrased.
+//
+// Real re-test after round 2 (55 real recent drafts): improved (31 ->
+// 27 flagged) but still flags ~49% of real recent drafts, and every
+// single one traced to real supplied facts, not invented filler --
+// confirming this is genuinely not safe to hard-fail on yet. The two
+// remaining root causes, both real and distinct from round 1's:
+//   - date-format mismatch: research_facts stores dates as ISO
+//     ("2026-09-10"); the writer naturally writes them as prose
+//     ("September 10, 2026") -- completely different tokens after
+//     normalization, so no contiguous run can ever bridge it without
+//     actual date parsing (real cases: art_0105, art_0108, art_0113,
+//     art_0114, art_0122, art_0135, art_0141)
+//   - word-order/verb-form paraphrase sitting INSIDE the window, not
+//     at the edges: domain_facts says "a co-borrower and a cosigner",
+//     the writer wrote "a cosigner and a coborrower" (order reversed);
+//     brand_facts says "What they are: An online student loan
+//     portal", the writer wrote "College Ave is an online student..."
+//     (label -> sentence, changing "are" to "is" right where the
+//     repeated window sits) -- a swap or substitution in the middle of
+//     the window breaks any run long enough to still count as
+//     "grounded" (real cases: art_0111, art_0116, art_0126, art_0130,
+//     art_0131, art_0138, art_0139, art_0140)
+// Notably, across all 55 real recent drafts, zero were confirmed
+// genuinely invented, content-free filler repetition (the actual
+// defect this check exists to catch) -- every flagged case was real
+// data, just phrased differently each time it recurred.
+const MIN_GROUNDED_RUN = 4;
+
+function isGroundedInReference(windowWords: string[], normalizedReference: string): boolean {
+  for (let size = windowWords.length; size >= MIN_GROUNDED_RUN; size--) {
+    for (let start = 0; start + size <= windowWords.length; start++) {
+      const run = windowWords.slice(start, start + size).join(" ");
+      if (normalizedReference.includes(run)) return true;
+    }
+  }
+  return false;
+}
+
+function findRepeatedPhrase(body: string, referenceText: string): string | null {
   const words = normalizeForRepetitionCheck(body).split(" ").filter(Boolean);
   const counts = new Map<string, number>();
 
@@ -719,10 +776,12 @@ function findRepeatedPhrase(body: string): string | null {
     counts.set(window, (counts.get(window) ?? 0) + 1);
   }
 
+  const normalizedReference = normalizeForRepetitionCheck(referenceText);
+
   for (const [phrase, count] of counts) {
-    if (count >= PHRASE_REPETITION_THRESHOLD) {
-      return `the phrase "${phrase}" appears ${count} times`;
-    }
+    if (count < PHRASE_REPETITION_THRESHOLD) continue;
+    if (isGroundedInReference(phrase.split(" "), normalizedReference)) continue;
+    return `the phrase "${phrase}" appears ${count} times`;
   }
   return null;
 }
@@ -757,15 +816,10 @@ function findBannedWordUsage(body: string, bannedWords: string[]): string | null
   return null;
 }
 
-// findRepeatedPhrase() is deliberately NOT called here yet -- real
-// testing against production data (art_0105, art_0108, art_0110)
-// showed it false-positives on legitimate repeated citations,
-// terminology definitions, and the article's own topic phrase. Kept
-// in this file, unused, for later refinement (e.g. excluding windows
-// that overlap the title/target keyword or a cited source name) rather
-// than deleted, since the mechanism itself works (confirmed against a
-// synthetic unbanned-filler-phrase case) -- it just isn't safe to gate
-// on yet.
+// findRepeatedPhrase() is deliberately NOT called here yet -- see its
+// own comment above for the full real-data diagnosis (round 2, still
+// not safe: ~49% of real recent drafts would false-positive on real
+// supplied facts phrased differently each time, not invented filler).
 export function findRepetitionIssues(
   body: string,
   bannedWords: string[],
