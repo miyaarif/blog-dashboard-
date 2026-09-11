@@ -598,10 +598,8 @@ export function findMissingPromisedFigures(
 // linked slug is real must not depend on the writer model remembering
 // not to invent one. Only checks for a FABRICATED link — a real slug
 // used that wasn't in the candidate list actually given to this
-// attempt. Does not fail an article for having zero internal links;
-// that's a real gap but not an active defect the way a broken link is
-// (see the hard-fail decision recorded in loop-run.ts), so it's left
-// as a softer, grader-flagged issue instead.
+// attempt. Zero real internal links is handled separately, by
+// findInsufficientInternalLinks below.
 const INTERNAL_LINK_PATTERN = /\]\(\/blog\/([a-z0-9-]+)\)/gi;
 
 export function findInvalidInternalLinks(
@@ -616,6 +614,41 @@ export function findInvalidInternalLinks(
     }
   }
   return null;
+}
+
+// Manager feedback (Section 3): "require 3-5 contextual internal
+// links." Real backstop, same server-side-floor reasoning as the
+// checks above -- must not depend on the writer remembering the
+// prompt's own "3 to 5" target (writer v15). Uses the manager's own
+// number (3) as the floor, not a new invented one.
+//
+// Scoped, same discipline as findZeroGroundingOnComparison: never
+// demands more real links than genuinely exist. A brand-new site (or
+// an early article on one) with fewer than 3 real published articles
+// to link to can't hit 3 without fabricating one -- effectiveMinimum
+// caps at however many real candidates actually exist, and is 0 (no
+// hard-fail at all) when there are none yet. Only counts links that
+// are actually real (in candidateSlugs) toward the total -- a
+// fabricated link doesn't count, and is separately hard-failed by
+// findInvalidInternalLinks regardless of check order.
+export const MINIMUM_INTERNAL_LINKS = 3;
+
+export function findInsufficientInternalLinks(
+  body: string,
+  candidateSlugs: string[],
+  minimum: number = MINIMUM_INTERNAL_LINKS,
+): string | null {
+  const effectiveMinimum = Math.min(minimum, candidateSlugs.length);
+  if (effectiveMinimum === 0) return null;
+
+  const validSlugs = new Set(candidateSlugs);
+  const usedSlugs = new Set<string>();
+  for (const match of body.matchAll(INTERNAL_LINK_PATTERN)) {
+    if (validSlugs.has(match[1])) usedSlugs.add(match[1]);
+  }
+  if (usedSlugs.size >= effectiveMinimum) return null;
+
+  return `only ${usedSlugs.size} real internal link(s) used, despite ${candidateSlugs.length} real candidate(s) available (target: at least ${effectiveMinimum})`;
 }
 
 // Server-side floor, same reasoning as the checks above: a fabricated
@@ -886,6 +919,10 @@ export function runLintChecks(
     draft.body_markdown,
     context.validInternalLinkSlugs,
   );
+  const insufficientInternalLinks = findInsufficientInternalLinks(
+    draft.body_markdown,
+    context.validInternalLinkSlugs,
+  );
   const fabricatedByline = findFabricatedByline(draft.body_markdown);
   const repetitionIssue = findRepetitionIssues(
     draft.body_markdown,
@@ -905,6 +942,7 @@ export function runLintChecks(
     (placeholderLeftover ? `auto-fail: ${placeholderLeftover}` : null) ??
     (missingPromisedFigures ? `auto-fail: ${missingPromisedFigures}` : null) ??
     (invalidInternalLinks ? `auto-fail: ${invalidInternalLinks}` : null) ??
+    (insufficientInternalLinks ? `auto-fail: ${insufficientInternalLinks}` : null) ??
     (fabricatedByline ? `auto-fail: ${fabricatedByline}` : null) ??
     (repetitionIssue ? `auto-fail: ${repetitionIssue}` : null) ??
     (crossArticleDuplicate ? `auto-fail: ${crossArticleDuplicate}` : null) ??
