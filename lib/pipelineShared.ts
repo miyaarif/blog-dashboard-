@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { parseArticleBody } from "./blogContent";
 
 // ------------------------------------------------------------
 // Shared row shapes
@@ -710,78 +711,327 @@ function normalizeForRepetitionCheck(text: string): string {
     .trim();
 }
 
-// Round 2 refinement (2026-09-11), still NOT wired into
-// findRepetitionIssues/runLintChecks -- real testing shows it is not
-// yet safe to hard-fail on. Real progress made, real limits found; both
-// recorded here so the next attempt doesn't have to rediscover them.
+// Real testing (2026-09-11) found the single largest remaining
+// findRepeatedPhrase false-positive cluster is the same real date
+// cited in two different formats: research_facts stores it ISO
+// ("2026-09-10"), the writer naturally writes it as prose ("September
+// 10, 2026" or "Sept. 10, 2026"). After normalizeForRepetitionCheck's
+// punctuation-stripping, "2026-09-10" glues into one token
+// ("20260910") while the prose form stays three separate words
+// ("september 10 2026") -- they can never match, in any word order,
+// no matter how the surrounding text is paraphrased.
 //
-// Round 1 fix: compare each repeated window against referenceText (the
-// real supplied material for the assignment -- title, target_keyword,
-// research_facts, domain_facts, terminology, brand_facts). This closed
-// the cleanest false positives -- confirmed fully fixed: the article's
-// own topic phrase repeating (art_0110, "a private loan without a
-// cosigner" == the real target_keyword) and short verbatim terminology
-// reuse. But requiring the FULL 6-word window to match verbatim still
-// false-positived whenever the writer paraphrased real supplied text
-// even slightly.
-//
-// Round 2 fix: relaxed the match to accept any contiguous run of at
-// least MIN_GROUNDED_RUN words, not the full window -- real reused
-// content almost always keeps a solid multi-word core in common with
-// its source even when the edges are paraphrased.
-//
-// Real re-test after round 2 (55 real recent drafts): improved (31 ->
-// 27 flagged) but still flags ~49% of real recent drafts, and every
-// single one traced to real supplied facts, not invented filler --
-// confirming this is genuinely not safe to hard-fail on yet. The two
-// remaining root causes, both real and distinct from round 1's:
-//   - date-format mismatch: research_facts stores dates as ISO
-//     ("2026-09-10"); the writer naturally writes them as prose
-//     ("September 10, 2026") -- completely different tokens after
-//     normalization, so no contiguous run can ever bridge it without
-//     actual date parsing (real cases: art_0105, art_0108, art_0113,
-//     art_0114, art_0122, art_0135, art_0141)
-//   - word-order/verb-form paraphrase sitting INSIDE the window, not
-//     at the edges: domain_facts says "a co-borrower and a cosigner",
-//     the writer wrote "a cosigner and a coborrower" (order reversed);
-//     brand_facts says "What they are: An online student loan
-//     portal", the writer wrote "College Ave is an online student..."
-//     (label -> sentence, changing "are" to "is" right where the
-//     repeated window sits) -- a swap or substitution in the middle of
-//     the window breaks any run long enough to still count as
-//     "grounded" (real cases: art_0111, art_0116, art_0126, art_0130,
-//     art_0131, art_0138, art_0139, art_0140)
-// Notably, across all 55 real recent drafts, zero were confirmed
-// genuinely invented, content-free filler repetition (the actual
-// defect this check exists to catch) -- every flagged case was real
-// data, just phrased differently each time it recurred.
-const MIN_GROUNDED_RUN = 4;
+// Deliberately scoped to findRepeatedPhrase only -- must run BEFORE
+// normalizeForRepetitionCheck (needs the real hyphens/periods/commas
+// still present to recognize date patterns) and must NEVER touch
+// findDuplicateParagraph, which already runs live in the real
+// hard-fail chain today; changing its normalization would be a real
+// behavior change to something already shipped, not a refinement to
+// something still disconnected.
+const MONTH_NAMES = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
+];
+const MONTH_ABBREVIATIONS: Record<string, string> = {
+  jan: "january", feb: "february", mar: "march", apr: "april",
+  jun: "june", jul: "july", aug: "august", sep: "september",
+  sept: "september", oct: "october", nov: "november", dec: "december",
+};
 
-function isGroundedInReference(windowWords: string[], normalizedReference: string): boolean {
-  for (let size = windowWords.length; size >= MIN_GROUNDED_RUN; size--) {
-    for (let start = 0; start + size <= windowWords.length; start++) {
-      const run = windowWords.slice(start, start + size).join(" ");
-      if (normalizedReference.includes(run)) return true;
-    }
+function canonicalizeDates(text: string): string {
+  let result = text.replace(
+    /\b(\d{4})-(\d{2})-(\d{2})\b/g,
+    (match, year: string, month: string, day: string) => {
+      const monthName = MONTH_NAMES[parseInt(month, 10) - 1];
+      return monthName ? `${monthName} ${parseInt(day, 10)} ${year}` : match;
+    },
+  );
+  result = result.replace(
+    /\b([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})\b/g,
+    (match, monthRaw: string, day: string, year: string) => {
+      const key = monthRaw.toLowerCase();
+      const monthName = MONTH_NAMES.includes(key) ? key : MONTH_ABBREVIATIONS[key];
+      return monthName ? `${monthName} ${parseInt(day, 10)} ${year}` : match;
+    },
+  );
+  return result;
+}
+
+// findRepeatedPhrase() is still NOT wired into findRepetitionIssues/
+// runLintChecks -- six real rounds of testing (2026-09-11/12) got this
+// from a 49.1% real false-fail rate down to a validated 20.0%, with a
+// regression found and reverted along the way. Recorded here in full so
+// a future attempt doesn't have to rediscover any of it.
+//
+// Round 1: compare each repeated window against referenceText (the real
+// supplied material for the assignment). Fixed the cleanest cases
+// (art_0110's own target_keyword repeating; short verbatim terminology
+// reuse) but required the FULL 6-word window to match verbatim, so any
+// paraphrase of real supplied text still false-positived.
+//
+// Round 2: relaxed to any contiguous run of >=4 words, not the full
+// window. Improved 56.4% -> 49.1%, but every remaining case still
+// traced to real supplied facts, not invented filler -- two distinct
+// root causes: (a) date-format mismatch (research_facts stores ISO
+// dates, the writer writes prose dates -- different tokens even after
+// normalizing) and (b) word-order/verb-form paraphrase sitting INSIDE
+// the window (domain_facts "a co-borrower and a cosigner" reversed to
+// "a cosigner and a coborrower"; "What they are: X" turned into "X is
+// Y", changing the verb right where the window sits).
+//
+// Round 3: built canonicalizeDates() to fix (a). Verified it works
+// correctly in isolation, but real re-test found ZERO improvement
+// (still 49.1%) -- the real blocker wasn't the date TOKEN format, it
+// was sentence adjacency: research_facts' citation lines put the URL
+// next to the date ("...URL (fetched 2026-09-10)"), the writer
+// naturally puts the brand name next to the date instead ("Spirit
+// Juice Studios (fetched September 10, 2026)"). Same date, same
+// tokens, different neighbor -- still no contiguous match. Kept
+// canonicalizeDates anyway; it's correct and later rounds build on it.
+//
+// Round 4: replaced contiguous-substring grounding with component
+// masking -- dates/figures/URLs/brand names/entity-like proper nouns
+// get replaced with placeholder tokens (maskComponents), and a window
+// that's mostly citation apparatus (isCitationShaped) is exempt only
+// if the REAL underlying value behind each placeholder is identical
+// across every occurrence (the value-consistency guard) -- so citing
+// the same real source for different facts is fine, but a lazy
+// template reused with different real numbers plugged in each time
+// still gets caught. Improved 49.1% -> 38.2%. An adversarial test
+// (invented filler sharing topical vocabulary with real reference
+// material) confirmed the guard isn't just permissive noise.
+//
+// Round 5: replaced round 2's contiguous-substring grounding fallback
+// with word-SET (order-independent, stopword-filtered) Jaccard overlap
+// between the window and same-size sliding windows of referenceText
+// (isGroundedByOverlap) -- catches word-order reversals and
+// verb-form paraphrase that no contiguous run can bridge. Also added a
+// structural zone exemption (isStructurallyExempt): quick_answer,
+// key_takeaways, body (all H2/H3 sections collectively, ONE zone), and
+// faq are four distinct real structural purposes (writer rules 8-11;
+// rule 9 specifically requires a takeaway to be introduced once and
+// explained in full later) -- a window touching >=2 distinct zones,
+// with no single zone repeating it more than once internally, is
+// exactly that mandated reinforcement, not filler. Improved 38.2% ->
+// 20.0% (11/55), the best real result across all rounds -- confirmed:
+// the synthetic invented-filler case still fires, the adversarial test
+// still resists false exemption, and a spot-check of every remaining
+// flagged case found only one clear genuine catch (art_0112's two
+// byte-identical sentences) plus a few still-debatable ones -- zero
+// confirmed invented filler was ever missed.
+//
+// Round 6 (tried and reverted): split the single "body" zone into one
+// zone per real H2 section, to fix a specific remaining false positive
+// (art_0138, a brand fact restated across two different body sections).
+// Real re-test found this did NOT fix art_0138 (still flagged) AND
+// introduced a real regression: art_0112's two identical sentences
+// happen to sit in two different H2 sections, so finer zoning wrongly
+// excused them as legitimate cross-zone reinforcement. Disabling zone
+// exemption entirely (to isolate the effect) reverted to round 4's
+// 38.2%, losing real value the coarse single-"body"-zone version was
+// providing for the co-borrower/cosigner cluster. Conclusion: location
+// is the wrong signal to distinguish "the same fact reworded" from
+// "the same sentence duplicated," at any zone granularity -- reverted
+// to round 5's coarse single-"body"-zone design, the best validated
+// state.
+const CITATION_MARKERS = new Set([
+  "fetched", "per", "cited", "source", "sourced", "according", "reports", "as", "of", "report",
+]);
+const STOPWORDS = new Set([
+  "a", "an", "the", "and", "or", "but", "of", "to", "in", "on", "at", "for", "with",
+  "is", "are", "was", "were", "be", "been", "being", "this", "that", "these", "those",
+  "it", "its", "as", "your", "you", "not", "no", "do", "does", "did", "have", "has",
+  "had", "will", "would", "can", "could", "should", "just", "also", "so", "if", "than", "then",
+]);
+const CITATION_SHAPE_THRESHOLD = 0.5;
+const OVERLAP_GROUNDING_THRESHOLD = 0.6;
+
+interface MaskResult {
+  masked: string;
+  valueById: Map<string, string>;
+}
+
+// Replaces real dates/figures/URLs/brand names/entity-like proper nouns
+// with a UNIQUE indexed placeholder ("figuretoken3"), recording the
+// real underlying value per placeholder. Figure masking covers $X, X%,
+// and spelled-out percent ranges ("10 to 30 percent") -- real testing
+// (art_0137) found the writer sometimes spells percent ranges out
+// rather than using the % sign. The entity heuristic (2-4 consecutive
+// Capitalized Words) is coarse but reliable, same spirit as this file's
+// other regex-based checks -- it catches real research-cited company
+// names that aren't in the verified brands table (e.g. "Storyteller
+// Studios", cited as a data source, not an affiliate partner).
+function maskGroundedComponents(rawText: string, brandNames: string[]): MaskResult {
+  const valueById = new Map<string, string>();
+  let counter = 0;
+  function mask(kind: string, realValue: string): string {
+    const id = `${kind}${counter++}`;
+    valueById.set(id, realValue.toLowerCase());
+    return ` ${id} `;
+  }
+
+  let text = canonicalizeDates(rawText);
+  text = text.replace(
+    /\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})\s+(\d{4})\b/gi,
+    (m) => mask("datetoken", m),
+  );
+  text = text.replace(/\$\s?\d[\d,]*(?:\.\d+)?/g, (m) => mask("figuretoken", m));
+  text = text.replace(/\b\d+(?:\.\d+)?\s?%/g, (m) => mask("figuretoken", m));
+  text = text.replace(/\b\d+(?:\.\d+)?\s*(?:to|-)\s*\d+(?:\.\d+)?\s*percent\b/gi, (m) => mask("figuretoken", m));
+  text = text.replace(/\b\d+(?:\.\d+)?\s*percent\b/gi, (m) => mask("figuretoken", m));
+  text = text.replace(/https?:\/\/\S+/g, (m) => mask("urltoken", m));
+  for (const brand of brandNames) {
+    if (!brand) continue;
+    const escaped = brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    text = text.replace(new RegExp(`\\b${escaped}\\b`, "gi"), (m) => mask("brandtoken", m));
+  }
+  text = text.replace(/\b([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){1,3})\b/g, (m) => mask("entitytoken", m));
+
+  return { masked: text, valueById };
+}
+
+// Strips the unique suffix ("figuretoken3" -> "figuretoken") so
+// different real values of the same kind are treated as the same
+// generic slot for counting repeated windows.
+function genericForm(token: string): string {
+  return /^(datetoken|figuretoken|urltoken|brandtoken|entitytoken)\d+$/.test(token)
+    ? token.replace(/\d+$/, "")
+    : token;
+}
+
+// A window that's mostly fact-anchors/citation-marker words is
+// structurally an attribution tag, not narrative content.
+function isCitationShaped(genericWords: string[]): boolean {
+  const anchorCount = genericWords.filter(
+    (w) =>
+      w === "datetoken" || w === "figuretoken" || w === "urltoken" ||
+      w === "brandtoken" || w === "entitytoken" || CITATION_MARKERS.has(w),
+  ).length;
+  return anchorCount / genericWords.length >= CITATION_SHAPE_THRESHOLD;
+}
+
+function contentWordSet(words: string[]): Set<string> {
+  return new Set(words.filter((w) => !STOPWORDS.has(w) && w.length > 0));
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 0;
+  let intersection = 0;
+  for (const w of a) if (b.has(w)) intersection++;
+  const union = new Set([...a, ...b]).size;
+  return union === 0 ? 0 : intersection / union;
+}
+
+// Word-set (order-independent, stopword-filtered) Jaccard overlap
+// between the flagged window and every same-size sliding window of the
+// reference text -- catches word-order reversals and verb-form
+// paraphrase that no contiguous-substring check can bridge, while
+// staying LOCAL (same-size window comparison, not "does this word
+// appear anywhere in a huge blob") so it isn't just a permissive
+// bag-of-words check. Verified against a real adversarial case:
+// invented filler sharing topical vocabulary with real reference
+// material did NOT get falsely exempted at this threshold.
+function isGroundedByOverlap(
+  windowWords: string[],
+  referenceWords: string[],
+  threshold: number = OVERLAP_GROUNDING_THRESHOLD,
+): boolean {
+  const windowSet = contentWordSet(windowWords);
+  if (windowSet.size === 0) return false;
+  const size = windowWords.length;
+  for (let i = 0; i + size <= referenceWords.length; i++) {
+    const refSet = contentWordSet(referenceWords.slice(i, i + size));
+    if (jaccard(windowSet, refSet) >= threshold) return true;
   }
   return false;
 }
 
-function findRepeatedPhrase(body: string, referenceText: string): string | null {
-  const words = normalizeForRepetitionCheck(body).split(" ").filter(Boolean);
-  const counts = new Map<string, number>();
+// quick_answer/key_takeaways/body/faq are four distinct real
+// structural purposes (writer rules 8-11). Reuses parseArticleBody's
+// own real section-splitting (already built for rendering/TOC) rather
+// than re-deriving heading boundaries. All body H2/H3 sections are
+// deliberately treated as ONE collective zone, not one per section --
+// round 6 tried per-section zones and found it introduced a real
+// regression (see the comment above) without fixing its target.
+function getZoneTexts(body: string): Record<string, string> {
+  const parsed = parseArticleBody(body);
+  return {
+    quick_answer: parsed.quickAnswer ?? "",
+    key_takeaways: parsed.keyTakeaways ?? "",
+    body: parsed.sections.map((s) => s.content).join(" "),
+    faq: parsed.faq ?? "",
+  };
+}
 
+function countGenericPhraseInText(genericPhrase: string, text: string, brandNames: string[]): number {
+  const { masked } = maskGroundedComponents(text, brandNames);
+  const words = normalizeForRepetitionCheck(masked).split(" ").filter(Boolean);
+  let count = 0;
   for (let i = 0; i + PHRASE_WINDOW_SIZE <= words.length; i++) {
-    const window = words.slice(i, i + PHRASE_WINDOW_SIZE).join(" ");
-    counts.set(window, (counts.get(window) ?? 0) + 1);
+    const key = words.slice(i, i + PHRASE_WINDOW_SIZE).map(genericForm).join(" ");
+    if (key === genericPhrase) count++;
+  }
+  return count;
+}
+
+// Exempt only if the window touches >=2 distinct real structural
+// zones AND no single zone repeats it more than once internally --
+// that's exactly rule 9's "introduce once, explain in full later"
+// pattern. A window repeating 2+ times WITHIN one zone (e.g. the same
+// sentence copy-pasted into two different body sections) is not
+// covered by that justification and still needs to earn exemption via
+// the checks below.
+function isStructurallyExempt(genericPhrase: string, body: string, brandNames: string[]): boolean {
+  const zones = getZoneTexts(body);
+  const perZoneCounts = Object.values(zones).map((text) =>
+    countGenericPhraseInText(genericPhrase, text, brandNames),
+  );
+  const zonesTouched = perZoneCounts.filter((c) => c > 0).length;
+  const maxPerZone = Math.max(...perZoneCounts, 0);
+  return zonesTouched >= 2 && maxPerZone <= 1;
+}
+
+function findRepeatedPhrase(
+  body: string,
+  referenceText: string,
+  brandNames: string[],
+): string | null {
+  const { masked, valueById } = maskGroundedComponents(body, brandNames);
+  const idWords = normalizeForRepetitionCheck(masked).split(" ").filter(Boolean);
+
+  const genericCounts = new Map<string, { count: number; occurrences: string[][] }>();
+  for (let i = 0; i + PHRASE_WINDOW_SIZE <= idWords.length; i++) {
+    const windowIdWords = idWords.slice(i, i + PHRASE_WINDOW_SIZE);
+    const genericKey = windowIdWords.map(genericForm).join(" ");
+    const entry = genericCounts.get(genericKey) ?? { count: 0, occurrences: [] };
+    entry.count++;
+    entry.occurrences.push(windowIdWords);
+    genericCounts.set(genericKey, entry);
   }
 
-  const normalizedReference = normalizeForRepetitionCheck(referenceText);
+  const { masked: maskedReference } = maskGroundedComponents(referenceText, brandNames);
+  const referenceWords = normalizeForRepetitionCheck(maskedReference)
+    .split(" ")
+    .filter(Boolean)
+    .map(genericForm);
 
-  for (const [phrase, count] of counts) {
+  for (const [genericPhrase, { count, occurrences }] of genericCounts) {
     if (count < PHRASE_REPETITION_THRESHOLD) continue;
-    if (isGroundedInReference(phrase.split(" "), normalizedReference)) continue;
-    return `the phrase "${phrase}" appears ${count} times`;
+    const genericWords = genericPhrase.split(" ");
+
+    if (isStructurallyExempt(genericPhrase, body, brandNames)) continue;
+
+    if (isCitationShaped(genericWords)) {
+      const realValueTuples = occurrences.map((occ) =>
+        occ.map((w) => valueById.get(w) ?? w).join("|"),
+      );
+      const allSame = realValueTuples.every((t) => t === realValueTuples[0]);
+      if (allSame) continue;
+    }
+
+    if (isGroundedByOverlap(genericWords, referenceWords)) continue;
+
+    return `the phrase "${genericPhrase}" appears ${count} times`;
   }
   return null;
 }
@@ -817,9 +1067,13 @@ function findBannedWordUsage(body: string, bannedWords: string[]): string | null
 }
 
 // findRepeatedPhrase() is deliberately NOT called here yet -- see its
-// own comment above for the full real-data diagnosis (round 2, still
-// not safe: ~49% of real recent drafts would false-positive on real
-// supplied facts phrased differently each time, not invented filler).
+// own comment above for the full six-round real-data history. Best
+// validated state (round 5's design): 20.0% false-fail rate (11/55 real
+// recent drafts) -- real improvement over doing nothing, but still not
+// low enough to hard-fail on without risking real, legitimate content.
+// Needs referenceText and the article's real brand names to run, which
+// runLintChecks/LintContext don't carry today -- wiring it in means
+// threading those through, not just calling it here.
 export function findRepetitionIssues(
   body: string,
   bannedWords: string[],
