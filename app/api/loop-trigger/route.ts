@@ -84,9 +84,9 @@ function validateBody(body: unknown): { errors: string[]; value: LoopTriggerBody
 // login-free) write paths.
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // The loop can make up to 6 DeepSeek calls per run and has already been
-  // confirmed to outlast Vercel Hobby's ~10s function timeout (seen on
-  // /api/grade). Local-only for now, per the Phase 7 decision — enforced
-  // here, not just by hiding the button.
+  // confirmed to outlast Vercel Hobby's ~10s function timeout. Local-only
+  // for now, per the Phase 7 decision — enforced here, not just by hiding
+  // the button.
   if (process.env.VERCEL) {
     return NextResponse.json(
       {

@@ -64,7 +64,7 @@ import {
 const MAX_ATTEMPTS = 3;
 
 // ------------------------------------------------------------
-// Input shape — same as /api/generate
+// Input shape
 // ------------------------------------------------------------
 interface LoopRequestBody {
   site_id: string;
@@ -116,9 +116,8 @@ function validateBody(body: unknown): {
 }
 
 // ------------------------------------------------------------
-// Prompt loading — site-specific first, generic fallback.
-// Same pattern used by /api/generate and /api/grade, factored locally
-// since this route needs it for three different roles.
+// Prompt loading — site-specific first, generic fallback. Factored
+// locally since this route needs it for three different roles.
 // ------------------------------------------------------------
 async function loadActivePrompt(
   supabaseAdmin: SupabaseClient,
@@ -270,7 +269,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // ---- site, brand profile, brands (same checks as /api/generate) ----
+  // ---- site, brand profile, brands ----
   const { data: site, error: siteError } = await supabaseAdmin
     .from("sites")
     .select("id,name,domain,vertical,audience,monetisation,content_profile")
