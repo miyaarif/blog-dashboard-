@@ -20,8 +20,11 @@ import type { FaqPair } from "@/lib/blogContent";
 // leftover "-- The Complete Guide To..." suffix) -- this truncates the
 // rendered <title>/meta tags only, it never touches the real title
 // text stored on the article or shown as the on-page H1.
-const TITLE_MAX_CHARS = 60;
-const DESCRIPTION_MAX_CHARS = 155;
+// Exported so lib/pipelineShared.ts's lint-stage length check (informational
+// only, not a hard-fail) uses these exact same numbers -- imported, not
+// re-declared, so the two can never quietly drift apart.
+export const TITLE_MAX_CHARS = 60;
+export const DESCRIPTION_MAX_CHARS = 155;
 
 export function truncateForMeta(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;

@@ -1161,13 +1161,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     const passed =
       recomputedTotal >= rubricRow.pass_threshold && !hardFailReason;
 
+    // lintResult.infoIssues (e.g. an overlength title/meta_description) is
+    // appended here, for storage and for the reviewer to see -- never fed
+    // into previousIssues below, so it never reaches the reviser prompt.
+    // It's informational only and must never look like something the next
+    // attempt is expected to fix.
+    const issuesForReviewer = [...graderOutput.issues, ...lintResult.infoIssues];
+
     const gradeResult = await insertGrade(supabaseAdmin, {
       draft_id: draftId,
       scores: graderOutput.scores,
       weighted_total: recomputedTotal,
       passed,
       hard_fail_reason: hardFailReason,
-      issues: graderOutput.issues,
+      issues: issuesForReviewer,
       verdict_summary: graderOutput.verdict_summary,
       rubric_id: rubricRow.id,
       prompt_id: graderPrompt.id,
@@ -1191,7 +1198,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       weightedTotal: recomputedTotal,
       passed,
       hardFailReason,
-      issues: graderOutput.issues,
+      issues: issuesForReviewer,
       bodyMarkdown: writerOutput.body_markdown,
     };
 

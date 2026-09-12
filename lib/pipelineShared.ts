@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { parseArticleBody } from "./blogContent";
+import { TITLE_MAX_CHARS, DESCRIPTION_MAX_CHARS } from "./blogMetadata";
 
 // ------------------------------------------------------------
 // Shared row shapes
@@ -1213,6 +1214,47 @@ export function findZeroGroundingOnComparison(
   return `content shape is ${contentShape} but the draft has zero real sources and zero real figures ($ or %) anywhere`;
 }
 
+// Informational-only meta length check for the lint stage. Uses the exact
+// same real thresholds as render-time truncation (TITLE_MAX_CHARS /
+// DESCRIPTION_MAX_CHARS, imported from lib/blogMetadata.ts, not
+// re-declared) so this can never drift from the real render-time limit.
+// Render-time truncation (truncateForMeta -- word-boundary cut, never
+// mid-word) already handles an overlength value gracefully today, so this
+// is deliberately NOT a hard-fail. It exists only so a reviewer sees it in
+// needs_review instead of discovering it silently after publish. Returns
+// real Issue objects in the same shape the grader itself produces, so they
+// render in the existing review-queue issues list (DraftVersionCard.tsx)
+// with no new UI needed -- criterion "meta_length" formats cleanly via
+// that component's existing formatCriterionName().
+export function findMetaLengthIssues(
+  title: string,
+  metaDescription: string,
+): Issue[] {
+  const issues: Issue[] = [];
+
+  if (title.length > TITLE_MAX_CHARS) {
+    issues.push({
+      criterion: "meta_length",
+      severity: "low",
+      quote: title,
+      problem: `Title is ${title.length} characters, over the ${TITLE_MAX_CHARS}-character SEO limit -- it will be truncated at render (word-boundary cut, never mid-word).`,
+      suggested_fix: `Informational only, does not block publishing -- render-time truncation already handles this. Shorten to ${TITLE_MAX_CHARS} characters or fewer if you want the full title to show in search results and social previews.`,
+    });
+  }
+
+  if (metaDescription.length > DESCRIPTION_MAX_CHARS) {
+    issues.push({
+      criterion: "meta_length",
+      severity: "low",
+      quote: metaDescription,
+      problem: `Meta description is ${metaDescription.length} characters, over the ${DESCRIPTION_MAX_CHARS}-character SEO limit -- it will be truncated at render (word-boundary cut, never mid-word).`,
+      suggested_fix: `Informational only, does not block publishing -- render-time truncation already handles this. Shorten to ${DESCRIPTION_MAX_CHARS} characters or fewer if you want the full description to show in search results.`,
+    });
+  }
+
+  return issues;
+}
+
 // ------------------------------------------------------------
 // Fix 8 build order item 3 -- lint stage.
 // Pure refactor: the 7 checks below (placeholder leftovers through
@@ -1242,6 +1284,10 @@ export interface LintContext {
 
 export interface LintResult {
   hardFailReason: string | null;
+  // Informational-only findings -- never contribute to hardFailReason.
+  // Merged into the stored grade's issues array by the caller so a
+  // reviewer sees them; never fed into previousIssues/the reviser prompt.
+  infoIssues: Issue[];
 }
 
 export function runLintChecks(
@@ -1280,6 +1326,10 @@ export function runLintChecks(
     draft.body_markdown,
     context.contentShape,
   );
+  const metaLengthIssues = findMetaLengthIssues(
+    context.title,
+    draft.meta_description,
+  );
 
   const hardFailReason =
     (placeholderLeftover ? `auto-fail: ${placeholderLeftover}` : null) ??
@@ -1290,8 +1340,10 @@ export function runLintChecks(
     (repetitionIssue ? `auto-fail: ${repetitionIssue}` : null) ??
     (crossArticleDuplicate ? `auto-fail: ${crossArticleDuplicate}` : null) ??
     (zeroGroundingIssue ? `auto-fail: ${zeroGroundingIssue}` : null);
+  // metaLengthIssues is deliberately excluded from the hardFailReason
+  // chain above -- informational only, see findMetaLengthIssues.
 
-  return { hardFailReason };
+  return { hardFailReason, infoIssues: metaLengthIssues };
 }
 
 // ------------------------------------------------------------
