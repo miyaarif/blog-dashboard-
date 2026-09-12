@@ -459,6 +459,41 @@ export function logParseFailure(
   );
 }
 
+// A real occurrence of "DeepSeek grader did not return valid, complete
+// JSON after one retry" (5 times, Sept 2026) left nothing behind but the
+// console.warn lines above -- gone once the terminal/Vercel log rolled
+// over. Every one was undiagnosable afterward: no raw response, no
+// finish_reason, no per-call token usage survived. This builds the same
+// data as a plain object the caller can persist (loop_runs.grader_parse_failures)
+// instead of only logging it. finish_reason is the field that actually
+// distinguishes "hit the token ceiling" (length) from "finished normally
+// but produced bad JSON" (stop) -- confirmed against DeepSeek's own API
+// docs, not assumed.
+export interface GraderParseFailure {
+  attempt: number;
+  finish_reason: string | null;
+  input_tokens: number;
+  output_tokens: number;
+  content: string;
+  reasoning_content: string | null;
+  captured_at: string;
+}
+
+export function captureGraderParseFailure(
+  attempt: number,
+  result: DeepSeekSuccess,
+): GraderParseFailure {
+  return {
+    attempt,
+    finish_reason: result.finishReason ?? null,
+    input_tokens: result.inputTokens,
+    output_tokens: result.outputTokens,
+    content: result.content ?? "",
+    reasoning_content: result.reasoningContent ?? null,
+    captured_at: new Date().toISOString(),
+  };
+}
+
 export function recomputeWeightedTotal(
   scores: Record<string, number>,
   criteria: RubricCriterion[],

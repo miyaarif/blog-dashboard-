@@ -32,6 +32,8 @@ import {
   extractJsonObject,
   resolveGraderOutput,
   logParseFailure,
+  captureGraderParseFailure,
+  GraderParseFailure,
   recomputeWeightedTotal,
   findLowScoreCriterion,
   runLintChecks,
@@ -707,6 +709,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     "failed_after_retries";
   let errorDetail: string | null = null;
   let attemptsUsed = 0;
+  // Captured whenever the grader returns unparseable JSON, on either the
+  // first try or the one retry -- persisted to loop_runs regardless of
+  // whether the retry ultimately recovers, so a near-miss is visible too,
+  // not just a full run failure. Stays null on every normal run.
+  let graderParseFailureLog: GraderParseFailure[] | null = null;
 
   let previousDraftBody: string | null = null;
   let previousIssues: Issue[] = [];
@@ -1034,14 +1041,34 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (!graderOutput) {
       logParseFailure("grader", 1, graderAttempt as DeepSeekSuccess);
+      const firstFailure = captureGraderParseFailure(
+        1,
+        graderAttempt as DeepSeekSuccess,
+      );
+      graderParseFailureLog = [firstFailure];
+
+      // finish_reason "length" means DeepSeek hit GRADER_MAX_TOKENS (or the
+      // context window) mid-response -- the JSON is cut off mid-object, not
+      // malformed by syntax. Asking it to "return only the JSON object"
+      // again doesn't address that: the ceiling is unchanged and the
+      // conversation is now longer (original prompt + the cut-off response),
+      // so it's more likely to run out of room again, not less. Ask for a
+      // shorter response instead. Any other finish_reason (stop,
+      // content_filter, etc.) means generation finished normally but the
+      // output was bad JSON or the wrong shape -- the original correction is
+      // still the right ask for that case.
+      const correctionMessage =
+        firstFailure.finish_reason === "length"
+          ? "Your last response was cut off before it finished — it hit the output length limit, not a JSON syntax problem. Return the JSON object again, but keep every issue's \"problem\" and \"suggested_fix\" to one short sentence each so the full object fits within the limit."
+          : "Your last response was not valid JSON. Return only the JSON object.";
+
       graderMessages.push({
         role: "assistant",
         content: graderAttempt.content || graderAttempt.reasoningContent || "",
       });
       graderMessages.push({
         role: "user",
-        content:
-          "Your last response was not valid JSON. Return only the JSON object.",
+        content: correctionMessage,
       });
       let graderRetry: DeepSeekResult;
       try {
@@ -1071,6 +1098,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
       if (!graderOutput) {
         logParseFailure("grader", 2, graderRetry as DeepSeekSuccess);
+        graderParseFailureLog = [
+          firstFailure,
+          captureGraderParseFailure(2, graderRetry as DeepSeekSuccess),
+        ];
       }
     }
 
@@ -1202,6 +1233,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     total_input_tokens: totalInputTokens,
     total_output_tokens: totalOutputTokens,
     total_cost_cl: null,
+    grader_parse_failures: graderParseFailureLog,
     duration_ms: durationMs,
     started_at: startedAt.toISOString(),
     finished_at: finishedAt.toISOString(),
