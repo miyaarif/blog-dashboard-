@@ -556,7 +556,19 @@ const PLACEHOLDER_PATTERNS: { name: string; pattern: RegExp }[] = [
   { name: '"XXX"', pattern: /\bXXX\b/i },
   { name: '"INSERT"', pattern: /\bINSERT\b/i },
   { name: '"Score:" QA-metadata leak', pattern: /\bScore:\s*\d{1,3}\s*\/\s*100\b/i },
-  { name: '"AI-generated" leak', pattern: /\bAI[\s-]generated\b/i },
+  // Real false positive found 2026-09-12: a genuine, on-topic HME article
+  // about YouTube Shorts hard-failed 3/3 attempts on "AI-generated Shorts
+  // aren't called out in YouTube's published Shorts monetization policies"
+  // -- legitimate prose about a real platform-policy topic, not a leak. The
+  // real original bug this rule exists for (manager feedback doc, section
+  // 1.2) was the specific self-referential phrase "HME's first AI-generated
+  // article" -- no longer present in any real stored row to test against
+  // directly (confirmed: zero matches in articles or drafts), only known
+  // from the doc's own quote. Narrowed to require "article" right after
+  // "AI-generated" -- still catches the real historical phrase, no longer
+  // collides with "AI-generated Shorts/content/video", which real articles
+  // legitimately discuss as a topic, not a claim about themselves.
+  { name: '"AI-generated" leak', pattern: /\bAI[\s-]generated\s+article\b/i },
   { name: '"placeholder" leak', pattern: /\bplaceholders?\b/i },
   { name: '"known bug" leak', pattern: /\bknown bug\b/i },
 ];
