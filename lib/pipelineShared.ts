@@ -1427,6 +1427,56 @@ export async function insertArticleBrands(
   return error ? error.message : null;
 }
 
+// Real bug found during the SEO/metadata gap audit: keywords.assigned_article_id
+// existed but nothing ever wrote it -- every keyword row stayed permanently
+// unassigned regardless of real usage, even though lib/sites.ts already reads
+// it to filter the keyword picker UI. Matches CreationBoxForm's existing
+// intent-autofill logic exactly: same site, case-insensitive keyword text.
+// Only claims a row that's still unassigned -- a Retry reuses the same
+// target_keyword on a brand new article id (see ReviewActions.tsx: "Retry
+// creates a new article"), and the original claim should stay put rather
+// than silently move to every retry. Never throws -- a failure here is a
+// planning-aid miss, not a reason to fail real article creation, same
+// reasoning as notifyN8n never blocking the response.
+export async function assignKeywordToArticle(
+  supabaseAdmin: SupabaseClient,
+  siteId: string,
+  targetKeyword: string,
+  articleId: string,
+): Promise<void> {
+  const normalized = targetKeyword.trim().toLowerCase();
+  if (!normalized) return;
+
+  const { data, error: lookupError } = await supabaseAdmin
+    .from("keywords")
+    .select("id, keyword")
+    .eq("site_id", siteId)
+    .is("assigned_article_id", null);
+
+  if (lookupError) {
+    console.warn(
+      `keyword lookup failed for article ${articleId}: ${lookupError.message}`,
+    );
+    return;
+  }
+
+  const match = (data ?? []).find(
+    (row) => row.keyword.trim().toLowerCase() === normalized,
+  );
+  if (!match) return;
+
+  const { error: updateError } = await supabaseAdmin
+    .from("keywords")
+    .update({ assigned_article_id: articleId })
+    .eq("id", match.id);
+
+  if (updateError) {
+    console.warn(
+      `could not mark keyword ${match.id} assigned to article ${articleId}: ${updateError.message}`,
+    );
+  }
+}
+
 export interface DraftInsert {
   article_id: string;
   version: number;

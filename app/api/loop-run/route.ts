@@ -41,6 +41,7 @@ import {
   insertArticleWithRetry,
   updateArticleTitleWithRetry,
   insertArticleBrands,
+  assignKeywordToArticle,
   insertDraft,
   insertGrade,
   notifyN8n,
@@ -459,6 +460,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       { status: 500 },
     );
   }
+
+  // ---- best-effort: mark the matching keywords row as used, if one
+  // exists and isn't already claimed. Never blocks or fails article
+  // creation -- see assignKeywordToArticle in pipelineShared.ts. ----
+  await assignKeywordToArticle(
+    supabaseAdmin,
+    siteRow.id,
+    input.target_keyword,
+    article.id,
+  );
 
   // ---- research stage: runs once, before attempt 1. The underlying
   // facts don't change between retries, so there's no reason to pay for
