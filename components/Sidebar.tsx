@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MenuIcon, CloseIcon, ChevronDownIcon } from "@/components/icons";
 import ThemeToggle from "@/components/ThemeToggle";
+import SidebarLogo from "@/components/SidebarLogo";
 import type { Site } from "@/types";
 
 const LINKS = [
@@ -109,16 +110,7 @@ function SidebarContent({
 
   return (
     <div className="flex h-full flex-col">
-      <Link
-        href="/"
-        onClick={onNavigate}
-        className="flex items-center gap-2 px-5 py-5 text-sm font-semibold text-ink"
-      >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-bold text-white">
-          B
-        </span>
-        Blog Dashboard
-      </Link>
+      <SidebarLogo onClick={onNavigate} className="px-5 py-5" />
 
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3">
         {LINKS.map((link) => (
@@ -164,12 +156,7 @@ export default function Sidebar({ sites }: { sites: Site[] }) {
 
       {/* Mobile: slim top bar + slide-in drawer */}
       <header className="flex items-center justify-between border-b border-line bg-card px-4 py-3 sm:hidden">
-        <Link href="/" className="flex items-center gap-2 text-sm font-semibold text-ink">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-bold text-white">
-            B
-          </span>
-          Blog Dashboard
-        </Link>
+        <SidebarLogo />
         <button
           onClick={() => setMobileOpen(true)}
           aria-label="Open menu"
