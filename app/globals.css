@@ -115,3 +115,98 @@ body {
     animation: none;
   }
 }
+
+/* Article detail page body typography (app/articles/[id]). Colors use
+   --article-accent, set inline per render from the article's own site
+   (site.primary_colour) — real brand identity, not this tool's chrome,
+   same rule as SiteBadge/HeroImage/blog pages above. Falls back to the
+   dashboard accent only if that variable is somehow unset. */
+.article-editorial {
+  font-size: 18px;
+  line-height: 1.75;
+  color: var(--color-ink);
+}
+
+.article-editorial h2 {
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--color-ink);
+}
+
+.article-editorial h3 {
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--article-accent, var(--color-accent));
+}
+
+.article-editorial p {
+  margin-bottom: 1.25rem;
+}
+
+/* A paragraph that is entirely bold text reads as an FAQ-style question —
+   give it extra breathing room above so the answer paragraph right after
+   it visually pairs with it, without needing a separate FAQ data shape. */
+.article-editorial p:has(> strong:only-child) {
+  margin-top: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.article-editorial ul,
+.article-editorial ol {
+  margin: 0 0 1.25rem 1.25rem;
+  padding-left: 1rem;
+}
+
+.article-editorial li {
+  margin-bottom: 0.5rem;
+}
+
+.article-editorial li::marker {
+  color: var(--color-muted);
+}
+
+.article-editorial a {
+  color: var(--article-accent, var(--color-accent));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.article-editorial table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 16px;
+}
+
+.article-editorial th,
+.article-editorial td {
+  border: 1px solid var(--color-line);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+/* Disclaimer/affiliate text — write it as a markdown blockquote and it
+   renders as a distinct callout box instead of blending into the page. */
+.article-editorial blockquote {
+  margin: 2rem 0;
+  padding: 1rem 1.25rem;
+  border-top: 3px solid var(--article-accent, var(--color-accent));
+  background: var(--color-accent-soft);
+  border-radius: 0.5rem;
+  font-style: normal;
+  font-size: 15px;
+  color: var(--color-muted);
+}
+
+.article-editorial blockquote p {
+  margin-bottom: 0.5rem;
+}
+
+.article-editorial blockquote p:last-child {
+  margin-bottom: 0;
+}
