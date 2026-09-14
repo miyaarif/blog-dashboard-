@@ -38,6 +38,56 @@ export function countsByStatusPerSite(articles: Article[]): StatusBySite[] {
   }));
 }
 
+export interface DailyCount {
+  date: string; // yyyy-mm-dd, UTC
+  count: number;
+}
+
+// Shared day-bucketing for the two real daily series below -- zero-fills
+// every day in the window (not just days with real activity), so a
+// sparkline drawn from this always has a real, complete 30-point series.
+function bucketByDay(dates: Date[], days: number): DailyCount[] {
+  const now = new Date();
+  const start = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+  start.setUTCDate(start.getUTCDate() - (days - 1));
+
+  const counts = new Map<string, number>();
+  for (const d of dates) {
+    if (d < start) continue;
+    const key = d.toISOString().slice(0, 10);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  const result: DailyCount[] = [];
+  const cursor = new Date(start);
+  for (let i = 0; i < days; i++) {
+    const key = cursor.toISOString().slice(0, 10);
+    result.push({ date: key, count: counts.get(key) ?? 0 });
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+  return result;
+}
+
+// Real, from articles.created_at -- backs the "Total articles" stat
+// card's hover sparkline.
+export function articlesCreatedPerDay(articles: Article[], days = 30): DailyCount[] {
+  return bucketByDay(
+    articles.map((a) => new Date(a.created_at)),
+    days,
+  );
+}
+
+// Real, from articles.published_at -- backs the "Published" stat card's
+// hover sparkline.
+export function articlesPublishedPerDay(articles: Article[], days = 30): DailyCount[] {
+  return bucketByDay(
+    articles.filter((a) => a.published_at).map((a) => new Date(a.published_at!)),
+    days,
+  );
+}
+
 export interface WeeklyPublishCount {
   weekStart: string; // yyyy-mm-dd, Monday of that week
   count: number;
@@ -49,6 +99,16 @@ export function mondayOf(date: Date): Date {
   const diff = day === 0 ? -6 : 1 - day;
   d.setUTCDate(d.getUTCDate() + diff);
   return d;
+}
+
+// Real per-site version of publishedPerWeek -- filters to one site's real
+// articles first, then reuses the same weekly bucketing so the two never
+// drift apart. Added for the dashboard's per-site hover view.
+export function publishedPerWeekBySite(
+  articles: Article[],
+  siteId: string,
+): WeeklyPublishCount[] {
+  return publishedPerWeek(articles.filter((a) => a.site_id === siteId));
 }
 
 export function publishedPerWeek(articles: Article[]): WeeklyPublishCount[] {
